@@ -21,6 +21,7 @@ class DeckGrid(Gtk.Box):
         self,
         on_drop: Callable[[int, ActionItem], None],
         on_select: Callable[[int], None],
+        on_move: Callable[[int, int], None],
     ) -> None:
         super().__init__(
             orientation=Gtk.Orientation.VERTICAL,
@@ -31,6 +32,7 @@ class DeckGrid(Gtk.Box):
         )
         self._on_drop = on_drop
         self._on_select = on_select
+        self._on_move = on_move
         self._tiles: dict[int, DeckTile] = {}
         self._selected: int | None = None
 
@@ -55,7 +57,7 @@ class DeckGrid(Gtk.Box):
         key = 0
         for row in range(info.rows):
             for col in range(info.cols):
-                tile = DeckTile(key, self._on_drop, self._on_select)
+                tile = DeckTile(key, self._on_drop, self._on_select, self._on_move)
                 self._grid.attach(tile, col, row, 1, 1)
                 self._tiles[key] = tile
                 tile.set_button(page.buttons.get(key))

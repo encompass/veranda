@@ -221,7 +221,7 @@ class VerandaWindow(Adw.ApplicationWindow):
         toolbar.add_top_bar(header)
 
         self._body = Gtk.Stack()
-        self._grid = DeckGrid(self._on_drop, self._on_select)
+        self._grid = DeckGrid(self._on_drop, self._on_select, self._on_move)
         board = Gtk.Box(hexpand=True, vexpand=True)
         board.add_css_class("deck-board")
         board.append(self._grid)
@@ -418,6 +418,28 @@ class VerandaWindow(Adw.ApplicationWindow):
             self.notify("Drag an action from the right onto this button")
             return
         self._open_editor(key, button)
+
+    def _on_move(self, source_key: int, target_key: int) -> None:
+        """Move/swap a binding between two keys via drag-and-drop."""
+        if self._current_serial is None or source_key == target_key:
+            return
+        page = self._config.deck(self._current_serial).current_page()
+        src = page.buttons.get(source_key)
+        if src is None:
+            return
+        tgt = page.buttons.get(target_key)
+        page.buttons[target_key] = src
+        if tgt is not None:
+            page.buttons[source_key] = tgt  # swap
+        else:
+            page.buttons.pop(source_key, None)  # plain move
+
+        self._config.save()
+        self._grid.update_key(source_key, page.buttons.get(source_key))
+        self._grid.update_key(target_key, page.buttons.get(target_key))
+        for k in (source_key, target_key):
+            self._deck_manager.update_button(self._current_serial, k, page.buttons.get(k))
+        self._live.rebuild(page)  # re-key any live widgets that moved
 
     def _open_editor(self, key: int, button: ButtonConfig) -> None:
         self._grid.select(key)

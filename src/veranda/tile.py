@@ -7,9 +7,9 @@ from typing import Callable
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gdk, Gtk  # noqa: E402
+from gi.repository import Gdk, GObject, Gtk  # noqa: E402
 
-from veranda.models import ActionItem, ButtonConfig  # noqa: E402
+from veranda.models import ActionItem, ButtonConfig, TileMove  # noqa: E402
 from veranda.render import render_preview_texture  # noqa: E402
 
 TILE_SIZE = 108
@@ -28,11 +28,14 @@ class DeckTile(Gtk.Button):
         key: int,
         on_drop: Callable[[int, ActionItem], None],
         on_select: Callable[[int], None],
+        on_move: Callable[[int, int], None],
     ) -> None:
         super().__init__()
         self.key = key
         self._on_drop = on_drop
         self._on_select = on_select
+        self._on_move = on_move
+        self._bound = False
 
         self.add_css_class("deck-tile")
         self.add_css_class("flat")
@@ -62,12 +65,33 @@ class DeckTile(Gtk.Button):
 
         self.connect("clicked", lambda _btn: self._on_select(self.key))
         self._install_drop_target()
+        self._install_drag_source()
         self.set_empty()
+
+    # -- drag source (move a binding to another key) ----------------------
+
+    def _install_drag_source(self) -> None:
+        drag = Gtk.DragSource(actions=Gdk.DragAction.MOVE)
+        drag.connect("prepare", self._handle_prepare)
+        drag.connect("drag-begin", self._handle_drag_begin)
+        self.add_controller(drag)
+
+    def _handle_prepare(self, _source, _x, _y):
+        if not self._bound:
+            return None  # nothing to move on an empty tile
+        value = GObject.Value(TileMove, TileMove(self.key))
+        return Gdk.ContentProvider.new_for_value(value)
+
+    def _handle_drag_begin(self, source, _drag) -> None:
+        paintable = self._picture.get_paintable()
+        if paintable is not None:
+            source.set_icon(paintable, TILE_SIZE // 2, TILE_SIZE // 2)
 
     # -- drop target ------------------------------------------------------
 
     def _install_drop_target(self) -> None:
-        target = Gtk.DropTarget.new(ActionItem, Gdk.DragAction.COPY)
+        target = Gtk.DropTarget.new(ActionItem, Gdk.DragAction.COPY | Gdk.DragAction.MOVE)
+        target.set_gtypes([ActionItem, TileMove])
         target.connect("drop", self._handle_drop)
         target.connect("enter", self._handle_enter)
         target.connect("leave", self._handle_leave)
@@ -78,11 +102,15 @@ class DeckTile(Gtk.Button):
         if isinstance(value, ActionItem):
             self._on_drop(self.key, value)
             return True
+        if isinstance(value, TileMove):
+            if value.source_key != self.key:
+                self._on_move(value.source_key, self.key)
+            return True
         return False
 
     def _handle_enter(self, _target, _x, _y) -> Gdk.DragAction:
         self.add_css_class("drop-hover")
-        return Gdk.DragAction.COPY
+        return Gdk.DragAction.COPY | Gdk.DragAction.MOVE
 
     def _handle_leave(self, _target) -> None:
         self.remove_css_class("drop-hover")
@@ -93,11 +121,13 @@ class DeckTile(Gtk.Button):
         if button is None or button.is_empty:
             self.set_empty()
             return
+        self._bound = True
         self.add_css_class("bound")
         self._picture.set_paintable(render_preview_texture(button))
         self._stack.set_visible_child_name("image")
 
     def set_empty(self) -> None:
+        self._bound = False
         self.remove_css_class("bound")
         self._stack.set_visible_child_name("empty")
 

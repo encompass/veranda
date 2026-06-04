@@ -66,6 +66,18 @@ class ActionItem(GObject.Object):
         return self._action_class()
 
 
+class TileMove(GObject.Object):
+    """Drag-and-drop payload for moving/swapping a binding between two keys."""
+
+    __gtype_name__ = "VerandaTileMove"
+
+    source_key = GObject.Property(type=int)
+
+    def __init__(self, source_key: int) -> None:
+        super().__init__()
+        self.source_key = source_key
+
+
 @dataclass
 class ButtonConfig:
     """Presentation + bound action for a single key on a page."""
