@@ -62,9 +62,25 @@ class Action:
     ICON: str = "application-x-executable-symbolic"
     #: Category heading the action is grouped under in the library.
     CATEGORY: str = "General"
+    #: True for "Special Buttons" whose displayed image updates over time.
+    DYNAMIC: bool = False
 
     def __init__(self, params: dict[str, Any] | None = None) -> None:
         self.params: dict[str, Any] = dict(params or {})
+
+    # -- dynamic display (Special Buttons; defaults keep static actions inert) --
+
+    def display_icon(self) -> str | None:
+        """Live icon override (None → use the button's static icon)."""
+        return None
+
+    def display_text(self) -> str | None:
+        """Live main text (None → use the button's static label)."""
+        return None
+
+    def badge_text(self) -> str | None:
+        """Small corner-badge text, e.g. an unread count (None → no badge)."""
+        return None
 
     # -- presentation -----------------------------------------------------
 

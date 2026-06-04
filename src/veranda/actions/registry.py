@@ -10,6 +10,7 @@ from veranda.actions.gnome_shortcut import GnomeShortcutAction
 from veranda.actions.hotkey import HotkeyAction
 from veranda.actions.open_url import OpenUrlAction
 from veranda.actions.run_command import RunCommandAction
+from veranda.actions.special.time import ClockWidget, DateWidget
 from veranda.actions.type_text import TypeTextAction
 
 # Order here is the order shown in the library, grouped by CATEGORY.
@@ -21,6 +22,9 @@ ACTION_CATALOG: list[type[Action]] = [
     GnomeShortcutAction,
     SwitchPageAction,
     BrightnessAction,
+    # Special Buttons (live widgets)
+    ClockWidget,
+    DateWidget,
 ]
 
 _BY_TYPE: dict[str, type[Action]] = {cls.TYPE_ID: cls for cls in ACTION_CATALOG}

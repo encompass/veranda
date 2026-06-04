@@ -26,6 +26,7 @@ from veranda.settings import SettingsDialog, prompt_text
 from veranda.statusicon import TrayIcon
 from veranda.background import request_background
 from veranda.dbusservice import VerandaDBusService
+from veranda.livebuttons import LiveButtonController
 from veranda import autostart, transfer
 
 log = logging.getLogger(__name__)
@@ -100,6 +101,9 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._dbus = VerandaDBusService(self)
         self._dbus.register()
         self.connect("notify::visible", lambda *_a: self._dbus.notify_changed())
+
+        # Live "Special Buttons" refresh driver.
+        self._live = LiveButtonController(self._repaint_live_key)
 
         self._deck_manager.start()
         if self._config.settings.run_in_background:
@@ -302,8 +306,23 @@ class VerandaWindow(Adw.ApplicationWindow):
 
         self._apply_brightness(serial)
         self._deck_manager.apply_page(serial, page)
+        self._live.rebuild(page)
         self._dbus.notify_changed()
         return False
+
+    def _repaint_live_key(self, key: int) -> None:
+        """Repaint one live (Special Button) key on the GUI and hardware."""
+        serial = self._current_serial
+        if serial is None:
+            return
+        button = self._config.deck(serial).current_page().buttons.get(key)
+        if button is None:
+            return
+        self._grid.update_key(key, button)
+        state = self._config.decks.get(serial)
+        dimmed = self._screensaver_active and state is not None and state.dim_on_lock
+        if not dimmed:
+            self._deck_manager.update_button(serial, key, button)
 
     def _set_controls_sensitive(self, sensitive: bool) -> None:
         for widget in (
@@ -472,6 +491,9 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._screensaver_active = active
         for serial in self._deck_manager.serials():
             self._apply_brightness(serial)
+        # On wake, repaint live keys that were skipped while the deck was dark.
+        if not active and self._current_serial is not None:
+            self._live.repaint_all(self._config.deck(self._current_serial).current_page())
 
     def screensaver_available(self) -> bool:
         return self._screensaver.available
@@ -812,6 +834,7 @@ class VerandaWindow(Adw.ApplicationWindow):
             return
         self._shutdown_done = True
         self._config.save()
+        self._live.stop()
         self._screensaver.stop()
         self._tray.stop()
         self._dbus.unregister()

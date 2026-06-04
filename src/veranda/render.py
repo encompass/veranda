@@ -29,6 +29,8 @@ log = logging.getLogger(__name__)
 BACKGROUND = (28, 28, 30)
 FOREGROUND = "white"
 ICON_COLOR = (240, 240, 240)
+BADGE_BG = (224, 64, 64)
+BADGE_FG = "white"
 PREVIEW_SIZE = 96
 RASTER_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp")
 
@@ -127,18 +129,46 @@ def rasterize_icon(icon: str, size: int) -> Image.Image | None:
     return _rasterize_named(icon, size)
 
 
+def _draw_badge(image: Image.Image, text: str) -> None:
+    """Draw a small count/badge pill in the top-right corner (notification style)."""
+    width, height = image.size
+    draw = ImageDraw.Draw(image)
+    font = _font(max(9, int(height * 0.26)))
+    pad = max(2, int(height * 0.04))
+    tb = draw.textbbox((0, 0), text, font=font)
+    tw, th = tb[2] - tb[0], tb[3] - tb[1]
+    diameter = max(tw, th) + 2 * pad
+    w_pill = max(diameter, tw + 2 * pad)
+    x1, y1 = width - w_pill - pad, pad
+    x2, y2 = width - pad, pad + diameter
+    draw.rounded_rectangle((x1, y1, x2, y2), radius=diameter // 2, fill=BADGE_BG)
+    draw.text(((x1 + x2) / 2, (y1 + y2) / 2), text, font=font, anchor="mm", fill=BADGE_FG)
+
+
 def _compose(size: tuple[int, int], button: ButtonConfig) -> Image.Image:
-    """Build an RGB key image: optional icon + a text label."""
+    """Build an RGB key image: optional icon + a text label (+ live badge)."""
     width, height = size
     image = Image.new("RGB", size, BACKGROUND)
 
-    has_label = bool(button.label)
+    # A "Special Button" (DYNAMIC action) can override icon/label and add a badge.
+    icon_spec = button.icon
+    label = button.label
+    badge = None
+    action = button.action
+    if action is not None and getattr(action, "DYNAMIC", False):
+        icon_spec = action.display_icon() or button.icon
+        text = action.display_text()
+        if text is not None:
+            label = text
+        badge = action.badge_text()
+
+    has_label = bool(label)
     label_band = int(height * 0.30) if has_label else 0
 
-    if button.icon:
+    if icon_spec:
         avail_h = height - label_band
         target = max(8, int(min(width, avail_h) * 0.80))
-        icon = rasterize_icon(button.icon, target)
+        icon = rasterize_icon(icon_spec, target)
         if icon is not None:
             x = (width - icon.width) // 2
             y = (avail_h - icon.height) // 2
@@ -148,13 +178,16 @@ def _compose(size: tuple[int, int], button: ButtonConfig) -> Image.Image:
         draw = ImageDraw.Draw(image)
         scale = height / PREVIEW_SIZE
         font = _font(max(8, int(button.font_size * scale)))
-        if button.icon:
+        if icon_spec:
             baseline = height - int(height * 0.06)
             anchor = "ms"
         else:
             baseline = height // 2
             anchor = "mm"
-        draw.text((width / 2, baseline), button.label, font=font, anchor=anchor, fill=FOREGROUND)
+        draw.text((width / 2, baseline), label, font=font, anchor=anchor, fill=FOREGROUND)
+
+    if badge:
+        _draw_badge(image, badge)
 
     return image
 
