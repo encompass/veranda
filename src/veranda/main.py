@@ -38,6 +38,7 @@ class VerandaApp(Adw.Application):
     def do_startup(self) -> None:
         Adw.Application.do_startup(self)
         _load_css()
+        autostart.ensure_icon()
         autostart.ensure_app_desktop_entry()  # launchable + lets the extension start us
         # "app.show" lets a notification (or the bus) bring the window forward.
         show = Gio.SimpleAction.new("show", None)

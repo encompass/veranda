@@ -31,14 +31,28 @@ def _desktop_contents(autostart: bool) -> str:
         "[Desktop Entry]\n"
         "Type=Application\n"
         "Name=Veranda\n"
+        "GenericName=Stream Deck Manager\n"
         "Comment=Manage your Elgato Stream Deck\n"
         f"Exec={launch_command()}\n"
         f"Icon={APP_ID}\n"
         "Terminal=false\n"
-        "Categories=Utility;\n"
+        "Categories=Utility;GTK;\n"
+        "Keywords=Stream Deck;Elgato;macro;shortcut;hotkey;\n"
         "StartupNotify=true\n"
         + extra
     )
+
+
+def ensure_icon() -> None:
+    """Install the app icon into the user icon theme (so .desktop/About show it)."""
+    from importlib import resources
+
+    dest = _data_home() / "icons" / "hicolor" / "scalable" / "apps" / f"{APP_ID}.svg"
+    try:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(resources.files("veranda").joinpath("icon.svg").read_bytes())
+    except (OSError, FileNotFoundError) as exc:
+        log.debug("icon install failed: %s", exc)
 
 
 def _config_home() -> Path:

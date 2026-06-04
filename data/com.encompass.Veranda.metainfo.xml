@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.encompass.Veranda</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <name>Veranda</name>
+  <summary>Manage your Elgato Stream Deck</summary>
+
+  <developer id="com.encompass">
+    <name>Jason "JBear" Brower</name>
+  </developer>
+
+  <description>
+    <p>
+      Veranda is a modern, GNOME-native application for managing Elgato Stream
+      Deck devices on Linux. Bind keys with drag and drop, organize them into
+      profiles and pages, and choose from a rich set of actions.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Two-pane editor with live previews of every key</li>
+      <li>Actions: run a command, open a URL or folder, send hotkeys or text,
+          trigger any GNOME keyboard shortcut, copy text, and control the deck</li>
+      <li>Special Buttons that update live: clock, date, now playing, unread
+          counts, battery, system monitor, volume, network, weather, and more</li>
+      <li>Profiles and pages, with import and export</li>
+      <li>Per-key colors that follow the GNOME theme or accent color</li>
+      <li>Run in the background with a Quick Settings entry, lock-screen sync,
+          and automatic profile switching based on the focused app</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">com.encompass.Veranda.desktop</launchable>
+  <content_rating type="oars-1.1"/>
+
+  <url type="homepage">https://github.com/encompass/veranda</url>
+  <url type="bugtracker">https://github.com/encompass/veranda/issues</url>
+
+  <categories>
+    <category>Utility</category>
+    <category>GTK</category>
+  </categories>
+
+  <keywords>
+    <keyword>Stream Deck</keyword>
+    <keyword>Elgato</keyword>
+    <keyword>macro</keyword>
+    <keyword>hotkey</keyword>
+  </keywords>
+
+  <releases>
+    <release version="0.1.0" date="2026-06-04">
+      <description>
+        <p>First release: editor, profiles, actions, Special Buttons, and deep
+        GNOME integration (Quick Settings extension, lock sync, focus-based
+        profile switching).</p>
+      </description>
+    </release>
+  </releases>
+</component>

@@ -26,4 +26,4 @@ veranda = "veranda.main:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-veranda = ["style.css"]
+veranda = ["style.css", "icon.svg"]

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a3a40"/>
+      <stop offset="1" stop-color="#26262b"/>
+    </linearGradient>
+  </defs>
+  <!-- device body -->
+  <rect x="14" y="26" width="100" height="76" rx="12" fill="url(#body)"
+        stroke="#1c1c20" stroke-width="2"/>
+  <rect x="14" y="26" width="100" height="76" rx="12" fill="none"
+        stroke="#ffffff" stroke-opacity="0.06" stroke-width="1"/>
+  <!-- little stand -->
+  <rect x="52" y="100" width="24" height="8" rx="3" fill="#1c1c20"/>
+  <!-- keys: 3 x 2 grid -->
+  <g>
+    <rect x="25" y="37" width="22" height="22" rx="5" fill="#3584e4"/>
+    <rect x="53" y="37" width="22" height="22" rx="5" fill="#e66100"/>
+    <rect x="81" y="37" width="22" height="22" rx="5" fill="#3584e4"/>
+    <rect x="25" y="65" width="22" height="22" rx="5" fill="#33d17a"/>
+    <rect x="53" y="65" width="22" height="22" rx="5" fill="#3584e4"/>
+    <rect x="81" y="65" width="22" height="22" rx="5" fill="#9141ac"/>
+  </g>
+  <!-- key glints -->
+  <g fill="#ffffff" fill-opacity="0.18">
+    <rect x="25" y="37" width="22" height="7" rx="5"/>
+    <rect x="53" y="37" width="22" height="7" rx="5"/>
+    <rect x="81" y="37" width="22" height="7" rx="5"/>
+    <rect x="25" y="65" width="22" height="7" rx="5"/>
+    <rect x="53" y="65" width="22" height="7" rx="5"/>
+    <rect x="81" y="65" width="22" height="7" rx="5"/>
+  </g>
+</svg>
