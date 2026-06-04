@@ -436,6 +436,36 @@ class SettingsDialog(Adw.PreferencesDialog):
         import_row.add_suffix(import_btn)
         import_row.set_activatable_widget(import_btn)
         group.add(import_row)
-
         page.add(group)
+
+        full = Adw.PreferencesGroup(
+            title="Full Backup",
+            description="Save or restore everything — all devices, profiles, and settings.",
+        )
+
+        backup_row = Adw.ActionRow(
+            title="Back up all settings",
+            subtitle="Write a single file you can keep or move to another machine",
+        )
+        backup_btn = Gtk.Button(label="Back Up…", valign=Gtk.Align.CENTER)
+        backup_btn.connect("clicked", lambda _b: self._window.export_config_dialog())
+        backup_row.add_suffix(backup_btn)
+        backup_row.set_activatable_widget(backup_btn)
+        full.add(backup_row)
+
+        restore_row = Adw.ActionRow(
+            title="Restore from backup",
+            subtitle="Replace everything with the contents of a backup file",
+        )
+        restore_btn = Gtk.Button(label="Restore…", valign=Gtk.Align.CENTER)
+        restore_btn.add_css_class("destructive-action")
+        restore_btn.connect(
+            "clicked",
+            lambda _b: self._window.import_config_dialog(on_done=self._reload_profiles),
+        )
+        restore_row.add_suffix(restore_btn)
+        restore_row.set_activatable_widget(restore_btn)
+        full.add(restore_row)
+
+        page.add(full)
         return page

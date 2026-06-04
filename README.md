@@ -177,6 +177,11 @@ exit non-zero. Run `veranda --help` for the full list.
 State lives in `~/.config/veranda/config.json`, keyed by each deck's serial
 number, so multiple decks and pages are remembered independently.
 
+**Settings → Backup** can export a single profile to share, or take a **full
+backup** of everything (all devices, profiles, and settings) to one file and
+restore it later — handy for moving to a new machine. Restoring asks for
+confirmation before replacing your current setup.
+
 ## Status
 
 Early MVP. Supported and tested on the Stream Deck Mini; geometry is read from

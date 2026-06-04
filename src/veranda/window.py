@@ -1050,6 +1050,81 @@ class VerandaWindow(Adw.ApplicationWindow):
 
         dialog.open(self, None, done)
 
+    def export_config_dialog(self) -> None:
+        dialog = Gtk.FileDialog(title="Back up all settings")
+        dialog.set_initial_name("veranda-backup.json")
+        dialog.set_initial_folder(Gio.File.new_for_path(str(config_dir())))
+
+        def done(dlg, result):
+            try:
+                file = dlg.save_finish(result)
+            except Exception:  # noqa: BLE001 - cancelled
+                return
+            if file and file.get_path():
+                try:
+                    transfer.export_config(self._config, file.get_path())
+                    self.notify("Backed up all settings")
+                except OSError as exc:
+                    self.notify(f"Backup failed: {exc}")
+
+        dialog.save(self, None, done)
+
+    def import_config_dialog(self, on_done=None) -> None:
+        dialog = Gtk.FileDialog(title="Restore from backup")
+        flt = Gtk.FileFilter()
+        flt.set_name("Veranda backups")
+        flt.add_pattern("*.json")
+        filters = Gio.ListStore.new(Gtk.FileFilter)
+        filters.append(flt)
+        dialog.set_filters(filters)
+
+        def done(dlg, result):
+            try:
+                file = dlg.open_finish(result)
+            except Exception:  # noqa: BLE001 - cancelled
+                return
+            if not (file and file.get_path()):
+                return
+            try:
+                decks, settings = transfer.import_config(file.get_path())
+            except (OSError, ValueError) as exc:
+                self.notify(f"Restore failed: {exc}")
+                return
+            self._confirm_restore(decks, settings, on_done)
+
+        dialog.open(self, None, done)
+
+    def _confirm_restore(self, decks, settings, on_done=None) -> None:
+        alert = Adw.AlertDialog(
+            heading="Replace all settings?",
+            body=(
+                "Restoring replaces every device, profile, and page with the "
+                "contents of the backup. This cannot be undone."
+            ),
+        )
+        alert.add_response("cancel", "Cancel")
+        alert.add_response("restore", "Replace")
+        alert.set_response_appearance("restore", Adw.ResponseAppearance.DESTRUCTIVE)
+        alert.set_default_response("cancel")
+        alert.set_close_response("cancel")
+
+        def responded(_dlg, response):
+            if response == "restore":
+                self._apply_restored_config(decks, settings)
+                if on_done is not None:
+                    on_done()
+
+        alert.connect("response", responded)
+        alert.present(self)
+
+    def _apply_restored_config(self, decks, settings) -> None:
+        self._config.decks = decks
+        self._config.settings = settings
+        self._config.save()
+        self._refresh()
+        self._dbus.notify_changed()
+        self.notify("Settings restored from backup")
+
     # -- menu handlers ----------------------------------------------------
 
     def _open_settings(self) -> None:
