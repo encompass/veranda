@@ -8,6 +8,7 @@ from veranda.actions.base import Action
 from veranda.actions.deck_control import BrightnessAction, SwitchPageAction
 from veranda.actions.gnome_shortcut import GnomeShortcutAction
 from veranda.actions.hotkey import HotkeyAction
+from veranda.actions.multi import DelayAction, MultiAction
 from veranda.actions.open_app import OpenAppAction
 from veranda.actions.open_url import OpenUrlAction
 from veranda.actions.extras import CopyTextAction, OpenFolderAction
@@ -37,6 +38,7 @@ ACTION_CATALOG: list[type[Action]] = [
     TypeTextAction,
     CopyTextAction,
     GnomeShortcutAction,
+    MultiAction,
     SwitchPageAction,
     BrightnessAction,
     # Special Buttons (live widgets)
@@ -53,7 +55,12 @@ ACTION_CATALOG: list[type[Action]] = [
     UpdatesWidget,
 ]
 
-_BY_TYPE: dict[str, type[Action]] = {cls.TYPE_ID: cls for cls in ACTION_CATALOG}
+# Reconstructable but not shown in the palette (only used inside macros).
+_EXTRA_TYPES: list[type[Action]] = [DelayAction]
+
+_BY_TYPE: dict[str, type[Action]] = {
+    cls.TYPE_ID: cls for cls in (*ACTION_CATALOG, *_EXTRA_TYPES)
+}
 
 
 def get_action_class(type_id: str) -> type[Action] | None:
