@@ -9,9 +9,38 @@ is writable (a udev rule or the input group grants this).
 from __future__ import annotations
 
 import logging
+import re
 import time
 
 log = logging.getLogger(__name__)
+
+# GTK accelerator modifier tokens (the <...> parts) -> evdev KEY_* suffix.
+_ACCEL_MODS = {
+    "control": "LEFTCTRL", "ctrl": "LEFTCTRL", "primary": "LEFTCTRL",
+    "alt": "LEFTALT", "shift": "LEFTSHIFT",
+    "super": "LEFTMETA", "meta": "LEFTMETA", "hyper": "LEFTMETA",
+}
+
+# GDK keyval names (and XF86 media keys) -> evdev KEY_* attribute names.
+_GTK_KEYS = {
+    "space": "KEY_SPACE", "equal": "KEY_EQUAL", "minus": "KEY_MINUS",
+    "plus": "KEY_KPPLUS", "Tab": "KEY_TAB", "Above_Tab": "KEY_GRAVE",
+    "grave": "KEY_GRAVE", "Escape": "KEY_ESC", "Delete": "KEY_DELETE",
+    "BackSpace": "KEY_BACKSPACE", "Return": "KEY_ENTER", "Print": "KEY_SYSRQ",
+    "Home": "KEY_HOME", "End": "KEY_END", "Insert": "KEY_INSERT",
+    "Page_Up": "KEY_PAGEUP", "Page_Down": "KEY_PAGEDOWN", "Menu": "KEY_COMPOSE",
+    "Left": "KEY_LEFT", "Right": "KEY_RIGHT", "Up": "KEY_UP", "Down": "KEY_DOWN",
+    "XF86AudioRaiseVolume": "KEY_VOLUMEUP", "XF86AudioLowerVolume": "KEY_VOLUMEDOWN",
+    "XF86AudioMute": "KEY_MUTE", "XF86AudioMicMute": "KEY_MICMUTE",
+    "XF86AudioPlay": "KEY_PLAYPAUSE", "XF86AudioPause": "KEY_PLAYPAUSE",
+    "XF86AudioStop": "KEY_STOPCD", "XF86AudioNext": "KEY_NEXTSONG",
+    "XF86AudioPrev": "KEY_PREVIOUSSONG", "XF86AudioMedia": "KEY_MEDIA",
+    "XF86Eject": "KEY_EJECTCD", "XF86Calculator": "KEY_CALC",
+    "XF86Mail": "KEY_MAIL", "XF86Search": "KEY_SEARCH", "XF86Explorer": "KEY_FILE",
+    "XF86WWW": "KEY_WWW", "XF86Tools": "KEY_CONFIG",
+    "XF86MonBrightnessUp": "KEY_BRIGHTNESSUP", "XF86MonBrightnessDown": "KEY_BRIGHTNESSDOWN",
+}
+_GTK_KEYS.update({f"F{i}": f"KEY_F{i}" for i in range(1, 13)})
 
 # Map friendly modifier/key names to evdev KEY_* attribute suffixes.
 _MODIFIERS = {
@@ -120,6 +149,35 @@ class InputBackend:
             (mods if p.lower() in _MODIFIERS else keys).append(code)
         if keys:
             self._tap(keys, hold=mods)
+
+    def send_accelerator(self, accel: str) -> None:
+        """Send a GTK-style accelerator like ``<Super>Page_Up`` or ``XF86AudioMute``."""
+        self._ensure()
+        if self._ui is None:
+            raise RuntimeError(self.unavailable_reason)
+        mods, keyname = self._parse_accel(accel)
+        code = self._accel_keycode(keyname)
+        if code is None:
+            raise ValueError(f"unsupported key: {keyname!r}")
+        self._tap([code], hold=mods)
+
+    def _parse_accel(self, accel: str) -> tuple[list[int], str]:
+        mods: list[int] = []
+        for token in re.findall(r"<([^>]+)>", accel):
+            suffix = _ACCEL_MODS.get(token.lower())
+            if suffix:
+                code = getattr(self._ecodes, f"KEY_{suffix}", None)
+                if code is not None:
+                    mods.append(code)
+        keyname = re.sub(r"<[^>]+>", "", accel).strip()
+        return mods, keyname
+
+    def _accel_keycode(self, name: str) -> int | None:
+        if name in _GTK_KEYS:
+            return getattr(self._ecodes, _GTK_KEYS[name], None)
+        if len(name) == 1:
+            return self._keycode(name)
+        return getattr(self._ecodes, f"KEY_{name.upper()}", None)
 
     def type_text(self, text: str) -> None:
         """Type a literal string, one character at a time."""

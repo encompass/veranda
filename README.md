@@ -33,6 +33,9 @@ an action onto a button to bind it. Press the physical key to run the action.
   - **Type Text** — type a literal string, Wayland-safe.
   - **Switch Page** / **Brightness** — control the deck itself (brightness
     changes persist per device and stay in sync with Settings).
+  - **GNOME Shortcut** — pick any GNOME keyboard shortcut (imported live from
+    your system settings, grouped like the GNOME dialog). Built-in shortcuts
+    replay their key combo; custom shortcuts run their command.
 - Hotplug aware: connect or disconnect a deck and the UI follows.
 - Config stored at `~/.config/veranda/config.json` (atomic writes).
 

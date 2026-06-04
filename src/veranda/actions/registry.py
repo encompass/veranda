@@ -6,6 +6,7 @@ from typing import Any, Iterator
 
 from veranda.actions.base import Action
 from veranda.actions.deck_control import BrightnessAction, SwitchPageAction
+from veranda.actions.gnome_shortcut import GnomeShortcutAction
 from veranda.actions.hotkey import HotkeyAction
 from veranda.actions.open_url import OpenUrlAction
 from veranda.actions.run_command import RunCommandAction
@@ -17,6 +18,7 @@ ACTION_CATALOG: list[type[Action]] = [
     OpenUrlAction,
     HotkeyAction,
     TypeTextAction,
+    GnomeShortcutAction,
     SwitchPageAction,
     BrightnessAction,
 ]
