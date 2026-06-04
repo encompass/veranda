@@ -12,8 +12,10 @@ from veranda.actions import iter_categories  # noqa: E402
 from veranda.actions.base import Action  # noqa: E402
 from veranda.models import ActionItem, ButtonConfig  # noqa: E402
 from veranda.render import render_preview_texture  # noqa: E402
+from veranda.tile import TILE_SIZE  # noqa: E402
 
-PREVIEW_PX = 46
+# Match the deck tiles on the left so palette and grid previews are identical.
+PREVIEW_PX = TILE_SIZE
 
 
 class ActionLibrary(Gtk.ScrolledWindow):
