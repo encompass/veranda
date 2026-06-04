@@ -19,6 +19,24 @@ from gi.repository import Gio
 log = logging.getLogger(__name__)
 
 KEYBINDINGS_DIR = "/usr/share/gnome-control-center/keybindings"
+
+# A fitting symbolic icon per shortcut category (all verified present in Adwaita).
+CATEGORY_ICONS = {
+    "Sound and Media": "audio-volume-high-symbolic",
+    "Launchers": "application-x-executable-symbolic",
+    "Navigation": "focus-windows-symbolic",
+    "Screenshots": "camera-photo-symbolic",
+    "System": "preferences-system-symbolic",
+    "Accessibility": "preferences-desktop-accessibility-symbolic",
+    "Windows": "window-new-symbolic",
+    "Typing": "input-keyboard-symbolic",
+    "Custom Shortcuts": "preferences-desktop-keyboard-symbolic",
+}
+DEFAULT_CATEGORY_ICON = "preferences-desktop-keyboard-symbolic"
+
+
+def category_icon(category: str) -> str:
+    return CATEGORY_ICONS.get(category, DEFAULT_CATEGORY_ICON)
 MEDIA_KEYS_SCHEMA = "org.gnome.settings-daemon.plugins.media-keys"
 CUSTOM_SCHEMA = "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding"
 

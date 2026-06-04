@@ -29,7 +29,7 @@ class RunCommandAction(Action):
     def summary(self) -> str:
         return self.command or "No command set"
 
-    def build_editor_rows(self, on_change: Callable[[], None]):
+    def build_editor_rows(self, button, on_change: Callable[[], None]):
         from gi.repository import Adw
 
         row = Adw.EntryRow(title="Command")

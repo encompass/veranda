@@ -28,7 +28,7 @@ class TypeTextAction(Action):
         text = self.text
         return (text[:24] + "…") if len(text) > 25 else (text or "No text set")
 
-    def build_editor_rows(self, on_change: Callable[[], None]):
+    def build_editor_rows(self, button, on_change: Callable[[], None]):
         from gi.repository import Adw
 
         row = Adw.EntryRow(title="Text to type")

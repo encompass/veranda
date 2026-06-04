@@ -29,6 +29,7 @@ class ButtonEditor(Adw.Dialog):
         self._button = button
         self._on_change = on_change
         self._on_remove = on_remove
+        self._syncing = False
         self.set_title(f"Button {key + 1}")
         self.set_content_width(440)
 
@@ -89,7 +90,7 @@ class ButtonEditor(Adw.Dialog):
             action_group = Adw.PreferencesGroup(
                 title="Action", description=button.action.NAME
             )
-            for row in button.action.build_editor_rows(self._notify):
+            for row in button.action.build_editor_rows(self._button, self._on_action_change):
                 action_group.add(row)
             page.add(action_group)
 
@@ -156,7 +157,22 @@ class ButtonEditor(Adw.Dialog):
     def _notify(self) -> None:
         self._on_change()
 
+    def _on_action_change(self) -> None:
+        # An action may have set the button's label/icon (e.g. picking a GNOME
+        # shortcut) — reflect that in the editor fields, then persist + render.
+        self._sync_appearance()
+        self._notify()
+
+    def _sync_appearance(self) -> None:
+        self._syncing = True
+        if self._label_row.get_text() != self._button.label:
+            self._label_row.set_text(self._button.label)
+        self._update_icon_preview()
+        self._syncing = False
+
     def _on_label_changed(self, row) -> None:
+        if self._syncing:
+            return
         self._button.label = row.get_text()
         self._notify()
 

@@ -28,7 +28,7 @@ class OpenUrlAction(Action):
     def summary(self) -> str:
         return self.target or "No URL set"
 
-    def build_editor_rows(self, on_change: Callable[[], None]):
+    def build_editor_rows(self, button, on_change: Callable[[], None]):
         from gi.repository import Adw
 
         row = Adw.EntryRow(title="URL or file path")

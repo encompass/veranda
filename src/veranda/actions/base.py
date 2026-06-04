@@ -92,11 +92,15 @@ class Action:
 
     # -- editing ----------------------------------------------------------
 
-    def build_editor_rows(self, on_change: Callable[[], None]) -> list["Gtk.Widget"]:
+    def build_editor_rows(
+        self, button: "ButtonConfig", on_change: Callable[[], None]
+    ) -> list["Gtk.Widget"]:
         """Return Adw rows that edit this action's parameters.
 
-        ``on_change`` must be invoked whenever a parameter changes so the
-        owning editor can persist and re-render. Default: no parameters.
+        ``button`` is the owning button, so an action may also set its label
+        or icon (e.g. when a concrete choice is made). ``on_change`` must be
+        invoked whenever anything changes so the editor persists, re-renders,
+        and re-syncs the label/icon fields. Default: no parameters.
         """
         return []
 

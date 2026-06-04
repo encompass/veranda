@@ -39,27 +39,46 @@ class GnomeShortcutAction(Action):
             detail = self.params.get("accel_label", "") or self.params.get("accel", "")
         return f"{label} ({detail})" if detail else label
 
-    def build_editor_rows(self, on_change: Callable[[], None]):
+    def apply_choice(self, button, sc) -> None:
+        """Store a picked shortcut and auto-fill the button's label/icon.
+
+        The label/icon are only overwritten when still at defaults or at the
+        value this action filled in last time — never clobbering a user edit.
+        """
+        from veranda import gnome_shortcuts as gs
+
+        icon = gs.category_icon(sc.category)
+        prev_label = self.params.get("_autolabel")
+        prev_icon = self.params.get("_autoicon")
+        self.params.update(
+            kind=sc.kind, label=sc.description, accel=sc.accel,
+            accel_label=gs.friendly_accel(sc.accel),
+            schema=sc.schema, key=sc.key, command=sc.command,
+        )
+        if button.label in ("", self.NAME) or button.label == prev_label:
+            button.label = sc.description
+        if button.icon in ("", self.ICON) or button.icon == prev_icon:
+            button.icon = icon
+        self.params["_autolabel"] = sc.description
+        self.params["_autoicon"] = icon
+
+    def build_editor_rows(self, button, on_change: Callable[[], None]):
         from gi.repository import Adw, GLib, Gtk
 
         from veranda import gnome_shortcuts as gs
         from veranda.shortcutpicker import ShortcutPicker
 
         row = Adw.ActionRow(title="Shortcut", subtitle=GLib.markup_escape_text(self.summary()))
-        button = Gtk.Button(label="Choose…", valign=Gtk.Align.CENTER)
-        row.add_suffix(button)
-        row.set_activatable_widget(button)
+        choose = Gtk.Button(label="Choose…", valign=Gtk.Align.CENTER)
+        row.add_suffix(choose)
+        row.set_activatable_widget(choose)
 
         def on_pick(sc) -> None:
-            self.params.update(
-                kind=sc.kind, label=sc.description, accel=sc.accel,
-                accel_label=gs.friendly_accel(sc.accel),
-                schema=sc.schema, key=sc.key, command=sc.command,
-            )
+            self.apply_choice(button, sc)
             row.set_subtitle(GLib.markup_escape_text(self.summary()))
             on_change()
 
-        button.connect(
+        choose.connect(
             "clicked", lambda _b: ShortcutPicker(on_pick).present(row.get_root())
         )
         return [row]

@@ -27,7 +27,7 @@ class SwitchPageAction(Action):
     def summary(self) -> str:
         return f"Go to page {self.page + 1}"
 
-    def build_editor_rows(self, on_change: Callable[[], None]):
+    def build_editor_rows(self, button, on_change: Callable[[], None]):
         from gi.repository import Adw, Gtk
 
         row = Adw.SpinRow(
@@ -76,7 +76,7 @@ class BrightnessAction(Action):
         sign = "+" if self.mode == "up" else "−"
         return f"Brightness {sign}{self.amount}%"
 
-    def build_editor_rows(self, on_change: Callable[[], None]):
+    def build_editor_rows(self, button, on_change: Callable[[], None]):
         from gi.repository import Adw, Gtk
 
         mode_row = Adw.ComboRow(title="Mode")
