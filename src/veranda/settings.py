@@ -52,10 +52,112 @@ class SettingsDialog(Adw.PreferencesDialog):
         self._profile_rows: list[Gtk.Widget] = []
         self._building = False
 
+        self._map_rows: list = []
         self.add(self._build_general_page())
         self.add(self._build_profiles_page())
+        self.add(self._build_automation_page())
         self.add(self._build_device_page())
         self.add(self._build_backup_page())
+
+    # -- automation (focus-driven profile switching) ----------------------
+
+    def _build_automation_page(self) -> Adw.PreferencesPage:
+        page = Adw.PreferencesPage(
+            title="Automation", icon_name="emblem-synchronizing-symbolic"
+        )
+        group = Adw.PreferencesGroup(
+            title="Profile auto-switch",
+            description="Switch the active profile when a chosen app is focused. "
+            "Requires the Veranda GNOME Shell extension to be enabled.",
+        )
+        toggle = Adw.SwitchRow(title="Switch profiles when apps are focused")
+        toggle.set_active(self._window.get_app_settings().auto_switch)
+        toggle.connect(
+            "notify::active", lambda r, _p: self._window.set_auto_switch(r.get_active())
+        )
+        group.add(toggle)
+        page.add(group)
+
+        self._map_group = Adw.PreferencesGroup(title="App → Profile")
+        add_btn = Gtk.Button(
+            icon_name="list-add-symbolic", valign=Gtk.Align.CENTER,
+            tooltip_text="Map an app to a profile",
+        )
+        add_btn.add_css_class("flat")
+        add_btn.connect("clicked", self._on_add_mapping)
+        self._map_group.set_header_suffix(add_btn)
+        page.add(self._map_group)
+        self._reload_mappings()
+        return page
+
+    def _reload_mappings(self) -> None:
+        for row in self._map_rows:
+            self._map_group.remove(row)
+        self._map_rows.clear()
+
+        names = self._window.profile_names()
+        mapping = self._window.app_profiles()
+        if not mapping:
+            row = Adw.ActionRow(
+                title="No apps mapped",
+                subtitle="Add an app to switch to a profile when it’s focused",
+            )
+            self._map_group.add(row)
+            self._map_rows.append(row)
+            return
+
+        for desktop_id, profile_name in sorted(mapping.items()):
+            row = Adw.ComboRow(title=self._app_name(desktop_id), subtitle=desktop_id)
+            model = Gtk.StringList()
+            for name in names:
+                model.append(name)
+            row.set_model(model)
+            if profile_name in names:
+                row.set_selected(names.index(profile_name))
+            row.connect("notify::selected", self._on_mapping_changed, desktop_id, names)
+            remove = Gtk.Button(
+                icon_name="user-trash-symbolic", valign=Gtk.Align.CENTER
+            )
+            remove.add_css_class("flat")
+            remove.connect("clicked", self._on_remove_mapping, desktop_id)
+            row.add_suffix(remove)
+            self._map_group.add(row)
+            self._map_rows.append(row)
+
+    def _on_mapping_changed(self, row, _pspec, desktop_id, names) -> None:
+        idx = row.get_selected()
+        if 0 <= idx < len(names):
+            self._window.set_app_profile(desktop_id, names[idx])
+
+    def _on_remove_mapping(self, _btn, desktop_id) -> None:
+        self._window.remove_app_profile(desktop_id)
+        self._reload_mappings()
+
+    def _on_add_mapping(self, _btn) -> None:
+        from veranda.apppicker import AppPicker
+
+        names = self._window.profile_names()
+        if not names:
+            self._window.notify("Connect a device with profiles first")
+            return
+
+        def on_pick(desktop_id, _name, _icon):
+            self._window.set_app_profile(desktop_id, names[0])
+            self._reload_mappings()
+
+        AppPicker(on_pick).present(self._window)
+
+    def _app_name(self, desktop_id: str) -> str:
+        try:
+            from gi.repository import GioUnix
+
+            did = desktop_id if desktop_id.endswith(".desktop") else desktop_id + ".desktop"
+            app = GioUnix.DesktopAppInfo.new(did)
+            if app is not None:
+                return app.get_display_name()
+        except Exception:  # noqa: BLE001
+            pass
+        return desktop_id
 
     # -- general ----------------------------------------------------------
 

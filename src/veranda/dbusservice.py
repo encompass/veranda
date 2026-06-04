@@ -25,6 +25,7 @@ _XML = """
   <method name="Quit"/>
   <method name="SetActiveProfile"><arg type="u" name="index" direction="in"/></method>
   <method name="SetBrightness"><arg type="i" name="percent" direction="in"/></method>
+  <method name="SetFocusedApp"><arg type="s" name="desktop_id" direction="in"/></method>
   <method name="GetState"><arg type="a{sv}" name="state" direction="out"/></method>
   <signal name="StateChanged"/>
  </interface>
@@ -89,6 +90,10 @@ class VerandaDBusService:
         elif method == "SetBrightness":
             (percent,) = params.unpack()
             w.set_brightness(int(percent))
+            invocation.return_value(None)
+        elif method == "SetFocusedApp":
+            (desktop_id,) = params.unpack()
+            w.set_focused_app(desktop_id)
             invocation.return_value(None)
         elif method == "GetState":
             invocation.return_value(GLib.Variant("(a{sv})", (self._state(),)))

@@ -4,6 +4,8 @@
 import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
 import GioUnix from 'gi://GioUnix';
+import GLib from 'gi://GLib';
+import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -144,6 +146,38 @@ export default class VerandaExtension extends Extension {
             Gio.BusType.SESSION, BUS_NAME, Gio.BusNameWatcherFlags.NONE,
             () => this._connect(),
             () => this._disconnectProxy());
+
+        // Report the focused app so Veranda can auto-switch profiles.
+        this._focusTimeout = 0;
+        this._focusId = global.display.connect(
+            'notify::focus-window', () => this._scheduleFocusPush());
+    }
+
+    _scheduleFocusPush() {
+        if (this._focusTimeout)
+            GLib.source_remove(this._focusTimeout);
+        this._focusTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 150, () => {
+            this._focusTimeout = 0;
+            this._pushFocus();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _pushFocus() {
+        if (!this._proxy)
+            return;
+        const win = global.display.get_focus_window();
+        if (!win)
+            return;
+        const app = Shell.WindowTracker.get_default().get_window_app(win);
+        const id = app ? app.get_id() : null;
+        if (id) {
+            try {
+                this._proxy.SetFocusedAppRemote(id);
+            } catch (e) {
+                logError(e, 'Veranda: SetFocusedApp failed');
+            }
+        }
     }
 
     _connect() {
@@ -151,6 +185,7 @@ export default class VerandaExtension extends Extension {
             this._proxy = ControlProxy(Gio.DBus.session, BUS_NAME, OBJ_PATH);
             this._signalId = this._proxy.connectSignal('StateChanged', () => this._refresh());
             this._refresh();
+            this._pushFocus();  // send current focus as soon as the app appears
             if (this._showOnConnect) {
                 this._showOnConnect = false;
                 this._proxy.ShowRemote();
@@ -228,6 +263,13 @@ export default class VerandaExtension extends Extension {
     }
 
     disable() {
+        if (this._focusId)
+            global.display.disconnect(this._focusId);
+        this._focusId = 0;
+        if (this._focusTimeout) {
+            GLib.source_remove(this._focusTimeout);
+            this._focusTimeout = 0;
+        }
         if (this._watchId)
             Gio.bus_unwatch_name(this._watchId);
         this._watchId = 0;

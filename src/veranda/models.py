@@ -25,6 +25,9 @@ class AppSettings:
     window_width: int = 1080
     window_height: int = 680
     window_maximized: bool = False
+    auto_switch: bool = False
+    # desktop-id -> profile name; switch to that profile when the app is focused
+    app_profiles: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -34,6 +37,8 @@ class AppSettings:
             "window_width": self.window_width,
             "window_height": self.window_height,
             "window_maximized": self.window_maximized,
+            "auto_switch": self.auto_switch,
+            "app_profiles": dict(self.app_profiles),
         }
 
     @classmethod
@@ -46,6 +51,8 @@ class AppSettings:
             window_width=int(data.get("window_width", 1080)),
             window_height=int(data.get("window_height", 680)),
             window_maximized=bool(data.get("window_maximized", False)),
+            auto_switch=bool(data.get("auto_switch", False)),
+            app_profiles=dict(data.get("app_profiles") or {}),
         )
 
 

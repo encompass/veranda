@@ -596,6 +596,47 @@ class VerandaWindow(Adw.ApplicationWindow):
         state.active_profile = idx
         self.reload()
 
+    # -- focus-driven profile auto-switching ------------------------------
+
+    def set_focused_app(self, desktop_id: str) -> None:
+        """Switch to the profile mapped to the focused app (if any)."""
+        s = self._config.settings
+        if not s.auto_switch or not desktop_id:
+            return
+        name = (
+            s.app_profiles.get(desktop_id)
+            or s.app_profiles.get(desktop_id + ".desktop")
+            or s.app_profiles.get(desktop_id.removesuffix(".desktop"))
+        )
+        if not name:
+            return
+        state = self.current_state()
+        if state is None:
+            return
+        for idx, profile in enumerate(state.profiles):
+            if profile.name == name and idx != state.active_profile:
+                self.switch_profile(idx)
+                return
+
+    def set_auto_switch(self, enabled: bool) -> None:
+        self._config.settings.auto_switch = bool(enabled)
+        self._config.save()
+
+    def app_profiles(self) -> dict[str, str]:
+        return self._config.settings.app_profiles
+
+    def set_app_profile(self, desktop_id: str, profile_name: str) -> None:
+        self._config.settings.app_profiles[desktop_id] = profile_name
+        self._config.save()
+
+    def remove_app_profile(self, desktop_id: str) -> None:
+        self._config.settings.app_profiles.pop(desktop_id, None)
+        self._config.save()
+
+    def profile_names(self) -> list[str]:
+        state = self.current_state()
+        return [p.name for p in state.profiles] if state is not None else []
+
     def set_brightness(self, value: int) -> None:
         """Set brightness for the current device (used by Settings)."""
         if self._current_serial is not None:
