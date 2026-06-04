@@ -104,6 +104,20 @@ def test_switch_profile_by_index():
     assert ("switch", 1) in w.calls
 
 
+def test_switch_profile_next_wraps():
+    w = FakeWindow(profiles=("A", "B", "C"), active=2)
+    status, out, err = _run(w, **{"switch-profile": "next"})
+    assert status == 0
+    assert ("switch", 0) in w.calls  # wraps past the end
+
+
+def test_switch_profile_previous():
+    w = FakeWindow(profiles=("A", "B", "C"), active=0)
+    status, out, err = _run(w, **{"switch-profile": "previous"})
+    assert status == 0
+    assert ("switch", 2) in w.calls  # wraps before the start
+
+
 def test_switch_profile_unknown():
     w = FakeWindow()
     status, out, err = _run(w, **{"switch-profile": "Nope"})

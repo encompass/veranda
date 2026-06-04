@@ -887,15 +887,18 @@ class VerandaWindow(Adw.ApplicationWindow):
         Returns True when a matching profile was found (even if already active).
         """
         state = self._config.decks.get(serial)
-        if state is None:
+        if state is None or not state.profiles:
             return False
         names = [p.name for p in state.profiles]
         target = str(target).strip()
+        folded = target.casefold()
         idx = None
-        if target.isdigit() and 0 <= int(target) < len(names):
+        if folded in ("next", "previous", "prev"):
+            delta = 1 if folded == "next" else -1
+            idx = (state.active_profile + delta) % len(names)
+        elif target.isdigit() and 0 <= int(target) < len(names):
             idx = int(target)
         else:
-            folded = target.casefold()
             idx = next((i for i, n in enumerate(names) if n.casefold() == folded), None)
         if idx is None:
             return False

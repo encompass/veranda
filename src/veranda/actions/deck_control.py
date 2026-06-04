@@ -54,30 +54,65 @@ class SwitchProfileAction(Action):
     ICON = "view-grid-symbolic"
     CATEGORY = "Deck"
 
+    MODES = [("named", "Specific profile"), ("next", "Next profile"),
+             ("previous", "Previous profile")]
+
+    @property
+    def mode(self) -> str:
+        mode = self.params.get("mode", "named")
+        return mode if mode in {m for m, _ in self.MODES} else "named"
+
     @property
     def profile(self) -> str:
         return str(self.params.get("profile", "")).strip()
 
     def default_label(self) -> str:
+        if self.mode == "next":
+            return "Next"
+        if self.mode == "previous":
+            return "Previous"
         return self.profile or "Profile"
 
     def summary(self) -> str:
+        if self.mode == "next":
+            return "Switch to the next profile"
+        if self.mode == "previous":
+            return "Switch to the previous profile"
         return f"Switch to “{self.profile}”" if self.profile else "Pick a profile"
 
     def build_editor_rows(self, button, on_change: Callable[[], None]):
-        from gi.repository import Adw
+        from gi.repository import Adw, Gtk
 
-        row = Adw.EntryRow(title="Profile name or number")
-        row.set_text(self.profile)
+        mode_row = Adw.ComboRow(title="Target")
+        labels = Gtk.StringList()
+        for _, label in self.MODES:
+            labels.append(label)
+        mode_row.set_model(labels)
+        mode_ids = [m for m, _ in self.MODES]
+        mode_row.set_selected(mode_ids.index(self.mode))
 
-        def changed(entry):
+        name_row = Adw.EntryRow(title="Profile name or number")
+        name_row.set_text(self.profile)
+        name_row.set_sensitive(self.mode == "named")
+
+        def mode_changed(row, _param):
+            self.params["mode"] = mode_ids[row.get_selected()]
+            name_row.set_sensitive(self.mode == "named")
+            on_change()
+
+        def name_changed(entry):
             self.params["profile"] = entry.get_text().strip()
             on_change()
 
-        row.connect("changed", changed)
-        return [row]
+        mode_row.connect("notify::selected", mode_changed)
+        name_row.connect("changed", name_changed)
+        return [mode_row, name_row]
 
     def execute(self, ctx: ActionContext) -> None:
+        if self.mode in ("next", "previous"):
+            if not ctx.switch_profile(ctx.serial, self.mode):
+                ctx.notify("No other profile to switch to")
+            return
         if not self.profile:
             ctx.notify("No profile chosen for this key")
             return

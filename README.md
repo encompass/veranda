@@ -163,7 +163,7 @@ handy for scripts, custom keybindings, or `gnome-shell` shortcuts.
 ```bash
 veranda --status                 # device, brightness, active profile
 veranda --list-profiles          # numbered profile list
-veranda --switch-profile Gaming  # by name (case-insensitive) or index
+veranda --switch-profile Gaming  # by name (case-insensitive), index, next, or previous
 veranda --brightness 60          # 0–100
 veranda --toggle                 # show/hide the window  (also --show / --hide)
 veranda --quit                   # quit the background instance

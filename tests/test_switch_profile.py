@@ -33,6 +33,24 @@ def test_execute_unconfigured_notifies(fake_ctx):
     assert any("No profile" in n for n in fake_ctx.notes)
 
 
+def test_next_previous_modes():
+    nxt = SwitchProfileAction({"mode": "next"})
+    assert nxt.summary() == "Switch to the next profile"
+    assert nxt.default_label() == "Next"
+    prev = SwitchProfileAction({"mode": "previous"})
+    assert prev.summary() == "Switch to the previous profile"
+    assert prev.default_label() == "Previous"
+    # unknown mode falls back to "named"
+    assert SwitchProfileAction({"mode": "bogus"}).mode == "named"
+
+
+def test_next_mode_passes_relative_target(fake_ctx):
+    SwitchProfileAction({"mode": "next"}).execute(fake_ctx)
+    assert fake_ctx.switched_profiles == ["next"]
+    SwitchProfileAction({"mode": "previous"}).execute(fake_ctx)
+    assert fake_ctx.switched_profiles == ["next", "previous"]
+
+
 def test_execute_unknown_profile_notifies():
     from veranda.actions.base import ActionContext
 

@@ -115,6 +115,12 @@ def _resolve_profile(window, target: str) -> int | None:
     names = window.profile_names()
     if not names:
         return None
+    folded = target.strip().casefold()
+    if folded in ("next", "previous", "prev"):
+        state = window.current_state()
+        active = int(state.active_profile) if state is not None else 0
+        delta = 1 if folded == "next" else -1
+        return (active + delta) % len(names)
     if target.isdigit():
         idx = int(target)
         return idx if 0 <= idx < len(names) else None
