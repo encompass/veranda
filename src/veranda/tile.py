@@ -94,8 +94,17 @@ class DeckTile(Gtk.Button):
         target.set_gtypes([ActionItem, TileMove])
         target.connect("drop", self._handle_drop)
         target.connect("enter", self._handle_enter)
+        target.connect("motion", self._handle_enter)
         target.connect("leave", self._handle_leave)
         self.add_controller(target)
+
+    def _preferred_action(self, target) -> Gdk.DragAction:
+        # Return a single action: MOVE for a tile drag, COPY for a library drag.
+        drop = target.get_current_drop()
+        offered = drop.get_actions() if drop is not None else Gdk.DragAction.COPY
+        if offered & Gdk.DragAction.MOVE:
+            return Gdk.DragAction.MOVE
+        return Gdk.DragAction.COPY
 
     def _handle_drop(self, _target, value, _x, _y) -> bool:
         self.remove_css_class("drop-hover")
@@ -108,9 +117,9 @@ class DeckTile(Gtk.Button):
             return True
         return False
 
-    def _handle_enter(self, _target, _x, _y) -> Gdk.DragAction:
+    def _handle_enter(self, target, _x, _y) -> Gdk.DragAction:
         self.add_css_class("drop-hover")
-        return Gdk.DragAction.COPY | Gdk.DragAction.MOVE
+        return self._preferred_action(target)
 
     def _handle_leave(self, _target) -> None:
         self.remove_css_class("drop-hover")
