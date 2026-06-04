@@ -18,6 +18,12 @@ an action onto a button to bind it. Press the physical key to run the action.
 - Button images: pick from a searchable themed **icon library**, or upload
   any **image or SVG**. Symbolic icons render to the device in white.
 - Multiple pages per deck, with add/remove and a "Switch Page" action.
+- **Special Buttons**: live, self-updating keys that show info and refresh on a
+  timer or D-Bus events — Clock, Date (day number → GNOME Calendar), Now Playing
+  (MPRIS, press toggles), App Unread (count badge via the dock-badge API),
+  Battery, System Monitor (CPU/RAM/disk), Volume (press mutes), Do Not Disturb,
+  Network, Weather, and Software Updates. Values render smart-per-type (big
+  number, corner badge, or icon+label).
 - **Profiles**: multiple independent button sets per deck, switchable from a
   header dropdown and managed in a Settings window (add/rename/duplicate/delete).
 - **Lock sync**: optionally blank a deck (brightness 0) when the GNOME session
