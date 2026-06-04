@@ -1,0 +1,8 @@
+{
+  "uuid": "veranda@encompass.gmail.com",
+  "name": "Veranda",
+  "description": "Quick Settings control for the Veranda Stream Deck manager: show or hide the app, switch profiles, and quit — natively from the top bar. Requires the Veranda app to be running.",
+  "shell-version": ["48", "49", "50"],
+  "url": "https://github.com/encompass/veranda",
+  "version": 1
+}

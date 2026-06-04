@@ -25,6 +25,7 @@ from veranda.screensaver import ScreensaverMonitor
 from veranda.settings import SettingsDialog, prompt_text
 from veranda.statusicon import TrayIcon
 from veranda.background import request_background
+from veranda.dbusservice import VerandaDBusService
 from veranda import autostart, transfer
 
 log = logging.getLogger(__name__)
@@ -94,6 +95,12 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._install_actions()
         self._build_ui()
         self.connect("close-request", self._on_close)
+
+        # Control interface for the GNOME Shell extension.
+        self._dbus = VerandaDBusService(self)
+        self._dbus.register()
+        self.connect("notify::visible", lambda *_a: self._dbus.notify_changed())
+
         self._deck_manager.start()
         if self._config.settings.run_in_background:
             self._enable_background()
@@ -295,6 +302,7 @@ class VerandaWindow(Adw.ApplicationWindow):
 
         self._apply_brightness(serial)
         self._deck_manager.apply_page(serial, page)
+        self._dbus.notify_changed()
         return False
 
     def _set_controls_sensitive(self, sensitive: bool) -> None:
@@ -448,6 +456,7 @@ class VerandaWindow(Adw.ApplicationWindow):
         state.brightness = max(0, min(100, int(value)))
         self._config.save()
         self._apply_brightness(serial)
+        self._dbus.notify_changed()
 
     def _apply_brightness(self, serial: str) -> None:
         """Push effective brightness to the device, honoring lock-dimming."""
@@ -782,6 +791,13 @@ class VerandaWindow(Adw.ApplicationWindow):
         else:
             self.present()
 
+    # Public aliases used by the D-Bus control interface.
+    def toggle_window(self) -> None:
+        self._toggle_window()
+
+    def real_quit(self) -> None:
+        self._real_quit()
+
     def _real_quit(self) -> None:
         self._quitting = True
         app = self.get_application()
@@ -798,6 +814,7 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._config.save()
         self._screensaver.stop()
         self._tray.stop()
+        self._dbus.unregister()
         self._deck_manager.stop()
         self._input_backend.close()
 

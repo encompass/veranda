@@ -105,6 +105,29 @@ Two top-right surfaces are used:
   *Ubuntu AppIndicators*) GNOME extension, then the icon appears automatically.
   Without it, use the Background Apps entry above.
 
+## GNOME Shell extension (Quick Settings)
+
+For a truly native presence — a **Quick Settings** entry (like Caffeine) and a
+top-bar indicator — Veranda ships an optional GNOME Shell extension in
+`extension/`. It talks to the running app over D-Bus
+(`com.encompass.Veranda.Control`) to show/hide the window, switch profiles, and
+quit, and shows the connected device in its menu.
+
+GNOME Shell's built-in system indicators (Wi-Fi, volume, battery) are core and
+can't be extended by an app — a Shell extension is the only supported way to add
+a native-looking entry there.
+
+Install:
+
+```bash
+./extension/install.sh
+# then log out and back in (Wayland registers newly-added extensions on login)
+gnome-extensions enable veranda@encompass.gmail.com
+```
+
+The extension's top-bar icon appears only while the Veranda app is running, so
+pair it with "Run in the background" / "Open at login".
+
 ## Configuration
 
 State lives in `~/.config/veranda/config.json`, keyed by each deck's serial
