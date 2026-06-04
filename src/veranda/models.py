@@ -22,12 +22,18 @@ class AppSettings:
     run_in_background: bool = False
     start_hidden: bool = False
     tray_warning_dismissed: bool = False
+    window_width: int = 1080
+    window_height: int = 680
+    window_maximized: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "run_in_background": self.run_in_background,
             "start_hidden": self.start_hidden,
             "tray_warning_dismissed": self.tray_warning_dismissed,
+            "window_width": self.window_width,
+            "window_height": self.window_height,
+            "window_maximized": self.window_maximized,
         }
 
     @classmethod
@@ -37,6 +43,9 @@ class AppSettings:
             run_in_background=bool(data.get("run_in_background", False)),
             start_hidden=bool(data.get("start_hidden", False)),
             tray_warning_dismissed=bool(data.get("tray_warning_dismissed", False)),
+            window_width=int(data.get("window_width", 1080)),
+            window_height=int(data.get("window_height", 680)),
+            window_maximized=bool(data.get("window_maximized", False)),
         )
 
 

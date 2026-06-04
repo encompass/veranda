@@ -54,9 +54,13 @@ class VerandaWindow(Adw.ApplicationWindow):
     def __init__(self, app: Adw.Application) -> None:
         super().__init__(application=app)
         self.set_title("Veranda")
-        self.set_default_size(1080, 680)
 
         self._config = AppConfig.load()
+        _settings = self._config.settings
+        self.set_default_size(_settings.window_width, _settings.window_height)
+        if _settings.window_maximized:
+            self.maximize()
+
         self._input_backend = InputBackend()
         self._deck_manager = DeckManager(
             on_key_press=self._on_key_press,
@@ -938,7 +942,16 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._deck_manager.stop()
         self._input_backend.close()
 
+    def _save_window_state(self) -> None:
+        s = self._config.settings
+        s.window_maximized = self.is_maximized()
+        if not s.window_maximized:
+            s.window_width = self.get_width() or s.window_width
+            s.window_height = self.get_height() or s.window_height
+        self._config.save()
+
     def _on_close(self, _window) -> bool:
+        self._save_window_state()
         # When running in the background, closing just hides to the tray.
         if not self._quitting and self._config.settings.run_in_background:
             self.set_visible(False)
