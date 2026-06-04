@@ -12,7 +12,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, Gtk  # noqa: E402
 
-from veranda import APP_ID, autostart  # noqa: E402
+from veranda import APP_ID, autostart, cli  # noqa: E402
 from veranda.window import VerandaWindow  # noqa: E402
 
 log = logging.getLogger(__name__)
@@ -31,9 +31,13 @@ def _load_css() -> None:
 
 class VerandaApp(Adw.Application):
     def __init__(self) -> None:
-        super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
+        super().__init__(
+            application_id=APP_ID,
+            flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE,
+        )
         self._window: VerandaWindow | None = None
         self._first_activation = True
+        cli.register_options(self)
 
     def do_startup(self) -> None:
         Adw.Application.do_startup(self)
@@ -44,6 +48,29 @@ class VerandaApp(Adw.Application):
         show = Gio.SimpleAction.new("show", None)
         show.connect("activate", lambda *_a: self._present())
         self.add_action(show)
+
+    def do_command_line(self, command_line: Gio.ApplicationCommandLine) -> int:
+        opts = command_line.get_options_dict()
+        if cli.has_control_options(opts):
+            # Control options act on a running instance. When invoked over the
+            # bus (is_remote), self._window is the live primary window. When no
+            # instance is running, this process briefly became primary but has
+            # no window to drive — report that and exit without launching a UI.
+            if self._window is None:
+                command_line.printerr_literal("Veranda is not running.\n")
+                command_line.set_exit_status(1)
+                return 1
+            status = cli.handle(
+                self._window,
+                opts,
+                command_line.print_literal,
+                command_line.printerr_literal,
+            )
+            command_line.set_exit_status(status)
+            return status
+        # No control options: behave like a normal launch / re-activation.
+        self.activate()
+        return 0
 
     def do_activate(self) -> None:
         # Track our own window reference: active_window is None while hidden,

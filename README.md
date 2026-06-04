@@ -146,6 +146,25 @@ gnome-extensions enable veranda@encompass.gmail.com
 The extension's top-bar icon appears only while the Veranda app is running, so
 pair it with "Run in the background" / "Open at login".
 
+## Command line
+
+Veranda is a single-instance app, so running `veranda` with control options
+forwards them over the session bus to the instance already running in the
+background (no second window opens) and prints the result to your terminal —
+handy for scripts, custom keybindings, or `gnome-shell` shortcuts.
+
+```bash
+veranda --status                 # device, brightness, active profile
+veranda --list-profiles          # numbered profile list
+veranda --switch-profile Gaming  # by name (case-insensitive) or index
+veranda --brightness 60          # 0–100
+veranda --toggle                 # show/hide the window  (also --show / --hide)
+veranda --quit                   # quit the background instance
+```
+
+If no instance is running, control options print `Veranda is not running.` and
+exit non-zero. Run `veranda --help` for the full list.
+
 ## Configuration
 
 State lives in `~/.config/veranda/config.json`, keyed by each deck's serial
