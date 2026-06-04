@@ -31,6 +31,8 @@ class DeckTile(Gtk.Button):
         on_move: Callable[[int, int], None],
         on_file_drop: Callable[[int, object], None],
         on_clear: Callable[[int], None],
+        on_command: Callable[[int, str], None],
+        can_paste: Callable[[], bool],
     ) -> None:
         super().__init__()
         self.key = key
@@ -39,6 +41,8 @@ class DeckTile(Gtk.Button):
         self._on_move = on_move
         self._on_file_drop = on_file_drop
         self._on_clear = on_clear
+        self._on_command = on_command
+        self._can_paste = can_paste
         self._bound = False
 
         self.add_css_class("deck-tile")
@@ -95,17 +99,34 @@ class DeckTile(Gtk.Button):
         return button
 
     def _on_secondary_press(self, _gesture, _n, x, y) -> None:
-        if not self._bound:
+        can_paste = self._can_paste()
+        if not self._bound and not can_paste:
             return
         popover = Gtk.Popover(has_arrow=True)
         popover.connect("closed", lambda p: p.unparent())
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         box.add_css_class("menu")
-        box.append(self._menu_button(
-            "Edit…", lambda _b: (popover.popdown(), self._on_select(self.key))))
-        box.append(self._menu_button(
-            "Clear Key", lambda _b: (popover.popdown(), self._on_clear(self.key)),
-            destructive=True))
+
+        def item(label, cmd, destructive=False):
+            def click(_b):
+                popover.popdown()
+                if cmd == "edit":
+                    self._on_select(self.key)
+                elif cmd == "clear":
+                    self._on_clear(self.key)
+                else:
+                    self._on_command(self.key, cmd)
+            box.append(self._menu_button(label, click, destructive))
+
+        if self._bound:
+            item("Edit…", "edit")
+            item("Copy", "copy")
+            item("Duplicate", "duplicate")
+        if can_paste:
+            item("Paste", "paste")
+        if self._bound:
+            item("Clear Key", "clear", destructive=True)
+
         popover.set_child(box)
         popover.set_parent(self)
         rect = Gdk.Rectangle()
@@ -113,7 +134,17 @@ class DeckTile(Gtk.Button):
         popover.set_pointing_to(rect)
         popover.popup()
 
-    def _on_key_pressed(self, _ctrl, keyval, _code, _state) -> bool:
+    def _on_key_pressed(self, _ctrl, keyval, _code, state) -> bool:
+        ctrl = bool(state & Gdk.ModifierType.CONTROL_MASK)
+        if ctrl and self._bound and keyval == Gdk.KEY_c:
+            self._on_command(self.key, "copy")
+            return True
+        if ctrl and self._bound and keyval == Gdk.KEY_d:
+            self._on_command(self.key, "duplicate")
+            return True
+        if ctrl and keyval == Gdk.KEY_v and self._can_paste():
+            self._on_command(self.key, "paste")
+            return True
         if self._bound and keyval in (Gdk.KEY_Delete, Gdk.KEY_BackSpace):
             self._on_clear(self.key)
             return True

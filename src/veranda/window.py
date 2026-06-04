@@ -110,6 +110,7 @@ class VerandaWindow(Adw.ApplicationWindow):
         # Live "Special Buttons" refresh driver.
         self._live = LiveButtonController(self._repaint_live_key)
         self._undo = UndoStack()
+        self._key_clipboard: ButtonConfig | None = None
 
         # Re-render keys when the system theme (light/dark) or accent changes.
         _sm = Adw.StyleManager.get_default()
@@ -283,7 +284,7 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._body = Gtk.Stack()
         self._grid = DeckGrid(
             self._on_drop, self._on_select, self._on_move, self._on_file_drop,
-            self._remove_button,
+            self._remove_button, self._on_tile_command, self._can_paste,
         )
         board = Gtk.Box(hexpand=True, vexpand=True)
         board.add_css_class("deck-board")
@@ -581,6 +582,65 @@ class VerandaWindow(Adw.ApplicationWindow):
             return
         self._apply_snapshot(snap)
         self.notify("Redone")
+
+    # -- copy / paste / duplicate ----------------------------------------
+
+    def _can_paste(self) -> bool:
+        return self._key_clipboard is not None
+
+    def _current_buttons(self):
+        if self._current_serial is None:
+            return None
+        return self._config.deck(self._current_serial).current_page().buttons
+
+    def _on_tile_command(self, key: int, command: str) -> None:
+        if command == "copy":
+            self._copy_key(key)
+        elif command == "paste":
+            self._paste_key(key)
+        elif command == "duplicate":
+            self._duplicate_key(key)
+
+    def _copy_key(self, key: int) -> None:
+        buttons = self._current_buttons()
+        if buttons is None or key not in buttons:
+            return
+        self._key_clipboard = ButtonConfig.from_dict(buttons[key].to_dict())
+        self.notify("Key copied")
+
+    def _paste_key(self, key: int) -> None:
+        if self._key_clipboard is None or self._current_serial is None:
+            return
+        self._record_undo()
+        buttons = self._config.deck(self._current_serial).current_page().buttons
+        button = ButtonConfig.from_dict(self._key_clipboard.to_dict())
+        buttons[key] = button
+        self._config.save()
+        self._grid.update_key(key, button)
+        self._deck_manager.update_button(self._current_serial, key, button)
+        self._live.rebuild(self._config.deck(self._current_serial).current_page())
+        self.notify("Pasted")
+
+    def _duplicate_key(self, key: int) -> None:
+        if self._current_serial is None:
+            return
+        buttons = self._config.deck(self._current_serial).current_page().buttons
+        if key not in buttons:
+            return
+        info = self._deck_manager.info(self._current_serial)
+        count = info.key_count if info is not None else 0
+        target = next((k for k in range(count) if k not in buttons), None)
+        if target is None:
+            self.notify("No empty key to duplicate to")
+            return
+        self._record_undo()
+        button = ButtonConfig.from_dict(buttons[key].to_dict())
+        buttons[target] = button
+        self._config.save()
+        self._grid.update_key(target, button)
+        self._deck_manager.update_button(self._current_serial, target, button)
+        self._live.rebuild(self._config.deck(self._current_serial).current_page())
+        self.notify("Duplicated")
 
     def _on_move(self, source_key: int, target_key: int) -> None:
         """Move/swap a binding between two keys via drag-and-drop."""
