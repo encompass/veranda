@@ -18,7 +18,7 @@ from veranda.deck import DeckInfo, DeckManager
 from veranda.dispatch import Dispatcher
 from veranda.editor import ButtonEditor
 from veranda.grid import DeckGrid
-from veranda.input_backend import InputBackend
+from veranda.input_backend import shared_backend
 from veranda.library import ActionLibrary
 from veranda.models import ActionItem, ButtonConfig, DeckState, Page, Profile
 from veranda.screensaver import ScreensaverMonitor
@@ -61,7 +61,7 @@ class VerandaWindow(Adw.ApplicationWindow):
         if _settings.window_maximized:
             self.maximize()
 
-        self._input_backend = InputBackend()
+        self._input_backend = shared_backend()
         self._deck_manager = DeckManager(
             on_key_press=self._on_key_press,
             on_decks_changed=self._refresh,

@@ -56,6 +56,12 @@ def folder_status(text: str) -> tuple[bool | None, str]:
     return (False, "Folder not found")
 
 
+def hotkey_status(text: str) -> tuple[bool | None, str]:
+    from veranda.input_backend import combo_is_valid
+
+    return combo_is_valid(text)
+
+
 def attach_validity(row, validate: Callable[[str], tuple[bool | None, str]]):
     """Add a live validity indicator (suffix icon) to an Adw.EntryRow."""
     from gi.repository import Gtk

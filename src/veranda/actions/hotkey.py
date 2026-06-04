@@ -28,10 +28,21 @@ class HotkeyAction(Action):
         return self.combo or "No keys set"
 
     def build_editor_rows(self, button, on_change: Callable[[], None]):
-        from gi.repository import Adw
+        from gi.repository import Adw, Gtk
+
+        from veranda.actions.validation import attach_validity, hotkey_status
 
         row = Adw.EntryRow(title="Key combo")
         row.set_text(self.combo)
+
+        test = Gtk.Button(
+            icon_name="media-playback-start-symbolic", valign=Gtk.Align.CENTER,
+            tooltip_text="Press these keys now to test",
+        )
+        test.add_css_class("flat")
+        test.connect("clicked", lambda _b: self._test_combo())
+        row.add_suffix(test)
+        attach_validity(row, hotkey_status)
 
         def changed(entry):
             self.params["combo"] = entry.get_text()
@@ -45,6 +56,19 @@ class HotkeyAction(Action):
         )
         hint.set_sensitive(False)
         return [row, hint]
+
+    def _test_combo(self) -> None:
+        combo = self.combo.strip()
+        if not combo:
+            return
+        from veranda.input_backend import shared_backend
+
+        backend = shared_backend()
+        if backend.available:
+            try:
+                backend.send_combo(combo)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("hotkey test failed: %s", exc)
 
     def execute(self, ctx: ActionContext) -> None:
         combo = self.combo.strip()

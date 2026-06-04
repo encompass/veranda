@@ -14,6 +14,11 @@ import time
 
 log = logging.getLogger(__name__)
 
+try:
+    from evdev import ecodes as _EC  # key-name resolution (no uinput needed)
+except ImportError:
+    _EC = None
+
 # GTK accelerator modifier tokens (the <...> parts) -> evdev KEY_* suffix.
 _ACCEL_MODS = {
     "control": "LEFTCTRL", "ctrl": "LEFTCTRL", "primary": "LEFTCTRL",
@@ -92,11 +97,10 @@ class InputBackend:
             return
         self._tried = True
         try:
-            from evdev import UInput, ecodes
+            from evdev import UInput
 
-            self._ecodes = ecodes
             # Advertise the full key range so any KEY_* we emit is accepted.
-            cap = {ecodes.EV_KEY: list(range(0, 256))}
+            cap = {_EC.EV_KEY: list(range(0, 256))}
             self._ui = UInput(cap, name="Veranda Virtual Keyboard")
             log.info("uinput keyboard ready")
         except PermissionError:
@@ -110,26 +114,17 @@ class InputBackend:
             log.warning(self.unavailable_reason)
 
     def _keycode(self, name: str) -> int | None:
-        name = name.strip().lower()
-        if name in _MODIFIERS:
-            attr = "KEY_" + _MODIFIERS[name]
-        elif name in _PUNCT:
-            attr = "KEY_" + _PUNCT[name].upper()
-        elif len(name) == 1 and name.isalnum():
-            attr = "KEY_" + name.upper()
-        else:
-            attr = "KEY_" + name.upper()
-        return getattr(self._ecodes, attr, None)
+        return _resolve_key(name)
 
     def _tap(self, codes: list[int], hold: list[int] | None = None) -> None:
         hold = hold or []
         for c in hold:
-            self._ui.write(self._ecodes.EV_KEY, c, 1)
+            self._ui.write(_EC.EV_KEY, c, 1)
         for c in codes:
-            self._ui.write(self._ecodes.EV_KEY, c, 1)
-            self._ui.write(self._ecodes.EV_KEY, c, 0)
+            self._ui.write(_EC.EV_KEY, c, 1)
+            self._ui.write(_EC.EV_KEY, c, 0)
         for c in reversed(hold):
-            self._ui.write(self._ecodes.EV_KEY, c, 0)
+            self._ui.write(_EC.EV_KEY, c, 0)
         self._ui.syn()
 
     def send_combo(self, combo: str) -> None:
@@ -166,7 +161,7 @@ class InputBackend:
         for token in re.findall(r"<([^>]+)>", accel):
             suffix = _ACCEL_MODS.get(token.lower())
             if suffix:
-                code = getattr(self._ecodes, f"KEY_{suffix}", None)
+                code = getattr(_EC, f"KEY_{suffix}", None)
                 if code is not None:
                     mods.append(code)
         keyname = re.sub(r"<[^>]+>", "", accel).strip()
@@ -174,10 +169,10 @@ class InputBackend:
 
     def _accel_keycode(self, name: str) -> int | None:
         if name in _GTK_KEYS:
-            return getattr(self._ecodes, _GTK_KEYS[name], None)
+            return getattr(_EC, _GTK_KEYS[name], None)
         if len(name) == 1:
             return self._keycode(name)
-        return getattr(self._ecodes, f"KEY_{name.upper()}", None)
+        return getattr(_EC, f"KEY_{name.upper()}", None)
 
     def type_text(self, text: str) -> None:
         """Type a literal string, one character at a time."""
@@ -208,3 +203,44 @@ class InputBackend:
             except Exception:  # noqa: BLE001
                 pass
             self._ui = None
+
+
+def _resolve_key(name: str) -> int | None:
+    """Map a key name to an evdev code (no uinput device required)."""
+    if _EC is None:
+        return None
+    name = name.strip().lower()
+    if name in _MODIFIERS:
+        attr = "KEY_" + _MODIFIERS[name]
+    elif name in _PUNCT:
+        attr = "KEY_" + _PUNCT[name].upper()
+    else:
+        attr = "KEY_" + name.upper()
+    return getattr(_EC, attr, None)
+
+
+def combo_is_valid(combo: str) -> tuple[bool | None, str]:
+    """(ok, tooltip) for a chord like ``ctrl+shift+t`` — for editor validation."""
+    combo = combo.strip()
+    if not combo:
+        return (None, "")
+    if _EC is None:
+        return (None, "")
+    parts = [p for p in combo.replace(" ", "").split("+") if p]
+    if not any(p.lower() not in _MODIFIERS for p in parts):
+        return (False, "Add a non-modifier key")
+    for p in parts:
+        if _resolve_key(p) is None:
+            return (False, f"Unknown key: {p}")
+    return (True, "Valid combo")
+
+
+_SHARED: "InputBackend | None" = None
+
+
+def shared_backend() -> "InputBackend":
+    """A process-wide InputBackend (so editor tests and runtime share a device)."""
+    global _SHARED
+    if _SHARED is None:
+        _SHARED = InputBackend()
+    return _SHARED
