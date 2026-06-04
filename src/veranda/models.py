@@ -186,6 +186,16 @@ class Profile:
             pages=pages,
         )
 
+    def move_page(self, src: int, dst: int) -> bool:
+        """Reorder a page; the moved page becomes active. Returns success."""
+        n = len(self.pages)
+        if not (0 <= src < n) or not (0 <= dst < n) or src == dst:
+            return False
+        page = self.pages.pop(src)
+        self.pages.insert(dst, page)
+        self.active_page = dst
+        return True
+
     def clone(self, new_name: str | None = None) -> "Profile":
         """A deep copy (via serialization), optionally renamed."""
         copy = Profile.from_dict(self.to_dict())

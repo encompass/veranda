@@ -138,6 +138,9 @@ class VerandaWindow(Adw.ApplicationWindow):
             ("shortcuts", self._show_shortcuts),
             ("next-page", lambda: self._page_step(1)),
             ("prev-page", lambda: self._page_step(-1)),
+            ("rename-page", self._rename_page),
+            ("move-page-left", lambda: self._move_page(-1)),
+            ("move-page-right", lambda: self._move_page(1)),
             ("undo", self._do_undo),
             ("redo", self._do_redo),
             ("quit", self._real_quit),
@@ -253,9 +256,15 @@ class VerandaWindow(Adw.ApplicationWindow):
         nav.append(self._next_btn)
         header.pack_start(nav)
 
-        self._page_label = Gtk.Label(label="")
-        self._page_label.add_css_class("dim-label")
-        header.pack_start(self._page_label)
+        page_menu = Gio.Menu()
+        page_menu.append("Rename Page…", "win.rename-page")
+        move = Gio.Menu()
+        move.append("Move Left", "win.move-page-left")
+        move.append("Move Right", "win.move-page-right")
+        page_menu.append_section(None, move)
+        self._page_button = Gtk.MenuButton(menu_model=page_menu, tooltip_text="Page options")
+        self._page_button.add_css_class("flat")
+        header.pack_start(self._page_button)
 
         add_page = Gtk.Button(icon_name="list-add-symbolic", tooltip_text="Add a page")
         add_page.connect("clicked", lambda _b: self._add_page())
@@ -360,7 +369,7 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._update_profile_dropdown(state)
 
         npages = len(profile.pages)
-        self._page_label.set_text(f"Page {profile.active_page + 1} / {npages}")
+        self._page_button.set_label(f"{page.name}  ({profile.active_page + 1}/{npages})")
         self._prev_btn.set_sensitive(profile.active_page > 0)
         self._next_btn.set_sensitive(profile.active_page < npages - 1)
         self._remove_page_btn.set_sensitive(npages > 1)
@@ -404,7 +413,7 @@ class VerandaWindow(Adw.ApplicationWindow):
 
     def _set_controls_sensitive(self, sensitive: bool) -> None:
         for widget in (
-            self._device_drop, self._profile_drop,
+            self._device_drop, self._profile_drop, self._page_button,
             self._prev_btn, self._next_btn, self._remove_page_btn,
         ):
             widget.set_sensitive(sensitive)
@@ -870,6 +879,32 @@ class VerandaWindow(Adw.ApplicationWindow):
             return
         profile = self._config.deck(self._current_serial).current_profile()
         self._switch_page(self._current_serial, profile.active_page + delta)
+
+    def _rename_page(self) -> None:
+        if self._current_serial is None:
+            return
+        profile = self._config.deck(self._current_serial).current_profile()
+        page = profile.current_page()
+
+        def apply(name: str) -> None:
+            self._record_undo()
+            page.name = name
+            self._config.save()
+            self._refresh()
+
+        prompt_text(self, "Rename page", page.name, apply)
+
+    def _move_page(self, delta: int) -> None:
+        if self._current_serial is None:
+            return
+        profile = self._config.deck(self._current_serial).current_profile()
+        dst = profile.active_page + delta
+        if not (0 <= dst < len(profile.pages)):
+            return
+        self._record_undo()
+        profile.move_page(profile.active_page, dst)
+        self._config.save()
+        self._refresh()
 
     def _add_page(self) -> None:
         if self._current_serial is None:
