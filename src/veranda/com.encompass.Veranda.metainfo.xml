@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 Jason "JBear" Brower -->
+<component type="desktop-application">
+  <id>com.encompass.Veranda</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <name>Veranda</name>
+  <summary>Manage your Elgato Stream Deck</summary>
+
+  <description>
+    <p>
+      Veranda is a modern, GNOME-native manager for Elgato Stream Deck devices.
+      Drag actions onto keys to launch apps, run commands, press hotkeys, type
+      text, open URLs and folders, or build multi-step macros — and arrange them
+      across pages and profiles.
+    </p>
+    <p>
+      Live "Special Buttons" turn keys into glanceable widgets — clock, date,
+      now-playing, battery, volume, system load, network, weather, and more —
+      that update on a timer or on desktop events. Keys can show symbolic icons,
+      uploaded images, or animated GIFs, with per-tile colors drawn from your
+      GNOME theme.
+    </p>
+    <p>
+      Veranda integrates deeply with GNOME: it runs in the background with a
+      tray entry, ships an optional Quick Settings extension, exposes profiles to
+      the Activities overview search, and can be driven from the command line.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">com.encompass.Veranda.desktop</launchable>
+
+  <categories>
+    <category>Utility</category>
+    <category>GTK</category>
+  </categories>
+
+  <keywords>
+    <keyword>Stream Deck</keyword>
+    <keyword>Elgato</keyword>
+    <keyword>macro</keyword>
+    <keyword>shortcut</keyword>
+    <keyword>hotkey</keyword>
+  </keywords>
+
+  <provides>
+    <binary>veranda</binary>
+  </provides>
+
+  <content_rating type="oars-1.1" />
+
+  <developer id="com.encompass">
+    <name>Jason "JBear" Brower</name>
+  </developer>
+  <update_contact>encompass@gmail.com</update_contact>
+
+  <releases>
+    <release version="0.1.0" date="2026-06-04">
+      <description>
+        <p>Initial release.</p>
+      </description>
+    </release>
+  </releases>
+</component>

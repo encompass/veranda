@@ -44,6 +44,7 @@ class VerandaApp(Adw.Application):
         _load_css()
         autostart.ensure_icon()
         autostart.ensure_app_desktop_entry()  # launchable + lets the extension start us
+        autostart.ensure_metainfo()  # AppStream metadata for GNOME Software
         autostart.ensure_search_provider()  # profiles in the Shell overview search
         # "app.show" lets a notification (or the bus) bring the window forward.
         show = Gio.SimpleAction.new("show", None)

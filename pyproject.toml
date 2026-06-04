@@ -33,4 +33,4 @@ filterwarnings = ["ignore::DeprecationWarning"]
 where = ["src"]
 
 [tool.setuptools.package-data]
-veranda = ["style.css", "icon.svg"]
+veranda = ["style.css", "icon.svg", "com.encompass.Veranda.metainfo.xml"]

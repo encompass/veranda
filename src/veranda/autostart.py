@@ -55,6 +55,25 @@ def ensure_icon() -> None:
         log.debug("icon install failed: %s", exc)
 
 
+def metainfo_file() -> Path:
+    return _data_home() / "metainfo" / f"{APP_ID}.metainfo.xml"
+
+
+def ensure_metainfo() -> None:
+    """Install the AppStream metainfo so GNOME Software can present the app."""
+    from importlib import resources
+
+    src = f"{APP_ID}.metainfo.xml"
+    dest = metainfo_file()
+    try:
+        data = resources.files("veranda").joinpath(src).read_bytes()
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if not dest.exists() or dest.read_bytes() != data:
+            dest.write_bytes(data)
+    except (OSError, FileNotFoundError) as exc:
+        log.debug("metainfo install failed: %s", exc)
+
+
 def _config_home() -> Path:
     return Path(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"))
 
