@@ -39,7 +39,10 @@ class LiveButtonController:
                     action.refresh()
             except Exception:  # noqa: BLE001
                 log.exception("live widget init failed for key %s", key)
-            interval = int(getattr(action, "REFRESH_INTERVAL", 0) or 0)
+            getter = getattr(action, "refresh_interval", None)
+            interval = int(getter() or 0) if callable(getter) else int(
+                getattr(action, "REFRESH_INTERVAL", 0) or 0
+            )
             if interval > 0:
                 self._timeouts.append(
                     GLib.timeout_add_seconds(interval, self._tick_cb(action))

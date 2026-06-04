@@ -94,6 +94,13 @@ class ButtonEditor(Adw.Dialog):
                 action_group.add(row)
             page.add(action_group)
 
+            # Live widgets that poll expose an adjustable refresh interval.
+            action = button.action
+            if getattr(action, "DYNAMIC", False) and getattr(
+                action, "supports_interval", lambda: False
+            )():
+                page.add(self._build_refresh_group(action))
+
         # -- remove -------------------------------------------------------
         danger = Adw.PreferencesGroup()
         remove = Gtk.Button(label="Remove Binding")
@@ -156,6 +163,25 @@ class ButtonEditor(Adw.Dialog):
 
     def _notify(self) -> None:
         self._on_change()
+
+    def _build_refresh_group(self, action) -> Adw.PreferencesGroup:
+        group = Adw.PreferencesGroup(title="Refresh")
+        spin = Adw.SpinRow(
+            title="Update every",
+            subtitle="seconds",
+            adjustment=Gtk.Adjustment(
+                lower=action.MIN_INTERVAL, upper=86400, step_increment=1,
+                value=action.refresh_interval(),
+            ),
+        )
+
+        def on_interval(row, _p):
+            action.set_refresh_interval(int(row.get_value()))
+            self._on_action_change()
+
+        spin.connect("notify::value", on_interval)
+        group.add(spin)
+        return group
 
     def _on_action_change(self) -> None:
         # An action may have set the button's label/icon (e.g. picking a GNOME

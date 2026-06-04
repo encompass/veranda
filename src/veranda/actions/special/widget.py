@@ -24,7 +24,8 @@ class LiveWidget(Action):
 
     DYNAMIC = True
     CATEGORY = "Special Buttons"
-    REFRESH_INTERVAL: int = 0  # seconds; 0 = event-driven (or static)
+    REFRESH_INTERVAL: int = 0  # seconds default; 0 = event-driven (or static)
+    MIN_INTERVAL: int = 1      # lower bound for a user-set interval
 
     def __init__(self, params: dict | None = None) -> None:
         super().__init__(params)
@@ -32,6 +33,25 @@ class LiveWidget(Action):
 
     def default_label(self) -> str:
         return ""  # widgets drive their own text via display_text()
+
+    # -- refresh interval (user-overridable for polled widgets) -----------
+
+    def supports_interval(self) -> bool:
+        """Polled widgets expose an interval setting; event-driven ones don't."""
+        return self.REFRESH_INTERVAL > 0
+
+    def refresh_interval(self) -> int:
+        """Effective poll interval: the user's override, else the default."""
+        if self.REFRESH_INTERVAL <= 0:
+            return 0
+        try:
+            value = int(self.params.get("interval", self.REFRESH_INTERVAL))
+        except (TypeError, ValueError):
+            value = self.REFRESH_INTERVAL
+        return max(self.MIN_INTERVAL, value)
+
+    def set_refresh_interval(self, seconds: int) -> None:
+        self.params["interval"] = max(self.MIN_INTERVAL, int(seconds))
 
     # -- refresh lifecycle (driven by LiveButtonController) ---------------
 

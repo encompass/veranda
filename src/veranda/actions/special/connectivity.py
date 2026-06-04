@@ -73,6 +73,7 @@ class WeatherWidget(LiveWidget):
     DESCRIPTION = "Current temperature for a location"
     ICON = "weather-clear-symbolic"
     REFRESH_INTERVAL = 1800
+    MIN_INTERVAL = 300
 
     def __init__(self, params: dict | None = None) -> None:
         super().__init__(params)
@@ -169,6 +170,7 @@ class UpdatesWidget(LiveWidget):
     DESCRIPTION = "Pending update count; opens GNOME Software"
     ICON = "software-update-available-symbolic"
     REFRESH_INTERVAL = 3600
+    MIN_INTERVAL = 300
 
     def __init__(self, params: dict | None = None) -> None:
         super().__init__(params)

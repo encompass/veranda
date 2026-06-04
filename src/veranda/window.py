@@ -434,6 +434,10 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._grid.update_key(key, button)
         if self._current_serial is not None:
             self._deck_manager.update_button(self._current_serial, key, button)
+            # Re-arm live timers/subscriptions if a Special Button was edited
+            # (e.g. its refresh interval changed).
+            if getattr(button.action, "DYNAMIC", False):
+                self._live.rebuild(self._config.deck(self._current_serial).current_page())
 
     def _remove_button(self, key: int) -> None:
         if self._current_serial is None:
