@@ -8,6 +8,7 @@ from veranda.actions.base import Action
 from veranda.actions.deck_control import BrightnessAction, SwitchPageAction
 from veranda.actions.gnome_shortcut import GnomeShortcutAction
 from veranda.actions.hotkey import HotkeyAction
+from veranda.actions.open_app import OpenAppAction
 from veranda.actions.open_url import OpenUrlAction
 from veranda.actions.extras import CopyTextAction, OpenFolderAction
 from veranda.actions.run_command import RunCommandAction
@@ -28,6 +29,7 @@ from veranda.actions.type_text import TypeTextAction
 
 # Order here is the order shown in the library, grouped by CATEGORY.
 ACTION_CATALOG: list[type[Action]] = [
+    OpenAppAction,
     RunCommandAction,
     OpenUrlAction,
     OpenFolderAction,
