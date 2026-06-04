@@ -10,6 +10,18 @@ from veranda.actions.gnome_shortcut import GnomeShortcutAction
 from veranda.actions.hotkey import HotkeyAction
 from veranda.actions.open_url import OpenUrlAction
 from veranda.actions.run_command import RunCommandAction
+from veranda.actions.special.connectivity import (
+    NetworkWidget,
+    UpdatesWidget,
+    WeatherWidget,
+)
+from veranda.actions.special.media import AppBadgeWidget, NowPlayingWidget
+from veranda.actions.special.system import (
+    BatteryWidget,
+    DoNotDisturbWidget,
+    SystemMonitorWidget,
+    VolumeWidget,
+)
 from veranda.actions.special.time import ClockWidget, DateWidget
 from veranda.actions.type_text import TypeTextAction
 
@@ -25,6 +37,15 @@ ACTION_CATALOG: list[type[Action]] = [
     # Special Buttons (live widgets)
     ClockWidget,
     DateWidget,
+    NowPlayingWidget,
+    AppBadgeWidget,
+    BatteryWidget,
+    SystemMonitorWidget,
+    VolumeWidget,
+    DoNotDisturbWidget,
+    NetworkWidget,
+    WeatherWidget,
+    UpdatesWidget,
 ]
 
 _BY_TYPE: dict[str, type[Action]] = {cls.TYPE_ID: cls for cls in ACTION_CATALOG}
