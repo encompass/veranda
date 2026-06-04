@@ -273,7 +273,9 @@ class VerandaWindow(Adw.ApplicationWindow):
         toolbar.add_top_bar(header)
 
         self._body = Gtk.Stack()
-        self._grid = DeckGrid(self._on_drop, self._on_select, self._on_move)
+        self._grid = DeckGrid(
+            self._on_drop, self._on_select, self._on_move, self._on_file_drop
+        )
         board = Gtk.Box(hexpand=True, vexpand=True)
         board.add_css_class("deck-board")
         board.append(self._grid)
@@ -484,6 +486,46 @@ class VerandaWindow(Adw.ApplicationWindow):
             self.notify("Drag an action from the right onto this button")
             return
         self._open_editor(key, button)
+
+    _IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".svg", ".gif", ".webp", ".bmp")
+
+    def _on_file_drop(self, key: int, gfile) -> None:
+        """Set a key's icon from an image file dropped from Files."""
+        import os
+        import shutil
+        import uuid
+
+        from veranda.config import config_dir
+
+        if self._current_serial is None:
+            return
+        path = gfile.get_path()
+        if not path:
+            self.notify("That file isn't available locally")
+            return
+        ext = os.path.splitext(path)[1].lower()
+        if ext not in self._IMAGE_EXTS:
+            self.notify("Drop an image file (PNG, JPG, SVG…)")
+            return
+        try:
+            icons = config_dir() / "icons"
+            icons.mkdir(parents=True, exist_ok=True)
+            dest = icons / f"{uuid.uuid4().hex}{ext}"
+            shutil.copyfile(path, dest)
+        except OSError as exc:
+            self.notify(f"Couldn't import the image: {exc}")
+            return
+
+        page = self._config.deck(self._current_serial).current_page()
+        button = page.buttons.get(key)
+        if button is None:
+            button = ButtonConfig()
+            page.buttons[key] = button
+        button.icon = str(dest)
+        self._config.save()
+        self._grid.update_key(key, button)
+        self._deck_manager.update_button(self._current_serial, key, button)
+        self.notify("Icon set from image")
 
     def _on_move(self, source_key: int, target_key: int) -> None:
         """Move/swap a binding between two keys via drag-and-drop."""

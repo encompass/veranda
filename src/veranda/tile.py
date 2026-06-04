@@ -29,12 +29,14 @@ class DeckTile(Gtk.Button):
         on_drop: Callable[[int, ActionItem], None],
         on_select: Callable[[int], None],
         on_move: Callable[[int, int], None],
+        on_file_drop: Callable[[int, object], None],
     ) -> None:
         super().__init__()
         self.key = key
         self._on_drop = on_drop
         self._on_select = on_select
         self._on_move = on_move
+        self._on_file_drop = on_file_drop
         self._bound = False
 
         self.add_css_class("deck-tile")
@@ -91,7 +93,7 @@ class DeckTile(Gtk.Button):
 
     def _install_drop_target(self) -> None:
         target = Gtk.DropTarget.new(ActionItem, Gdk.DragAction.COPY | Gdk.DragAction.MOVE)
-        target.set_gtypes([ActionItem, TileMove])
+        target.set_gtypes([ActionItem, TileMove, Gdk.FileList])
         target.connect("drop", self._handle_drop)
         target.connect("enter", self._handle_enter)
         target.connect("motion", self._handle_enter)
@@ -99,9 +101,14 @@ class DeckTile(Gtk.Button):
         self.add_controller(target)
 
     def _preferred_action(self, target) -> Gdk.DragAction:
-        # Return a single action: MOVE for a tile drag, COPY for a library drag.
+        # One action: COPY for a file drag (don't let the source delete it) or a
+        # library drag; MOVE for a tile-to-tile drag.
         drop = target.get_current_drop()
-        offered = drop.get_actions() if drop is not None else Gdk.DragAction.COPY
+        if drop is None:
+            return Gdk.DragAction.COPY
+        if drop.get_formats().contain_gtype(Gdk.FileList):
+            return Gdk.DragAction.COPY
+        offered = drop.get_actions()
         if offered & Gdk.DragAction.MOVE:
             return Gdk.DragAction.MOVE
         return Gdk.DragAction.COPY
@@ -114,6 +121,11 @@ class DeckTile(Gtk.Button):
         if isinstance(value, TileMove):
             if value.source_key != self.key:
                 self._on_move(value.source_key, self.key)
+            return True
+        if isinstance(value, Gdk.FileList):
+            files = value.get_files()
+            if files:
+                self._on_file_drop(self.key, files[0])
             return True
         return False
 
