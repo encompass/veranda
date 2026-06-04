@@ -9,6 +9,7 @@ from veranda.actions.deck_control import BrightnessAction, SwitchPageAction
 from veranda.actions.gnome_shortcut import GnomeShortcutAction
 from veranda.actions.hotkey import HotkeyAction
 from veranda.actions.open_url import OpenUrlAction
+from veranda.actions.extras import CopyTextAction, OpenFolderAction
 from veranda.actions.run_command import RunCommandAction
 from veranda.actions.special.connectivity import (
     NetworkWidget,
@@ -29,8 +30,10 @@ from veranda.actions.type_text import TypeTextAction
 ACTION_CATALOG: list[type[Action]] = [
     RunCommandAction,
     OpenUrlAction,
+    OpenFolderAction,
     HotkeyAction,
     TypeTextAction,
+    CopyTextAction,
     GnomeShortcutAction,
     SwitchPageAction,
     BrightnessAction,
