@@ -654,7 +654,8 @@ class VerandaWindow(Adw.ApplicationWindow):
             application_name="Veranda",
             application_icon=APP_ID,
             version=__version__,
-            developer_name="Veranda contributors",
+            developer_name="Jason \"JBear\" Brower",
+            developers=['Jason "JBear" Brower <encompass@gmail.com>'],
             license_type=Gtk.License.GPL_3_0,
             comments="A modern Stream Deck manager for GNOME.",
         )

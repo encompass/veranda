@@ -9,7 +9,7 @@ description = "A modern GTK4/libadwaita Stream Deck manager for Linux"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "GPL-3.0-or-later" }
-authors = [{ name = "Veranda contributors" }]
+authors = [{ name = "Jason \"JBear\" Brower", email = "encompass@gmail.com" }]
 dependencies = [
     "streamdeck>=0.9.5",
     "pillow>=10",
