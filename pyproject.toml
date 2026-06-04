@@ -19,8 +19,15 @@ dependencies = [
     # `--system-site-packages` so the system PyGObject is visible.
 ]
 
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
 [project.scripts]
 veranda = "veranda.main:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
