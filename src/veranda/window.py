@@ -54,7 +54,7 @@ class VerandaWindow(Adw.ApplicationWindow):
     def __init__(self, app: Adw.Application) -> None:
         super().__init__(application=app)
         self.set_title("Veranda")
-        self.set_default_size(980, 660)
+        self.set_default_size(1080, 680)
 
         self._config = AppConfig.load()
         self._input_backend = InputBackend()
@@ -159,8 +159,10 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._split.set_content(self._build_content_pane())
         self._split.set_sidebar(self._build_sidebar_pane())
 
+        # Collapse the sidebar before the expanded layout (content + sidebar,
+        # ~964px) would overflow, otherwise resizing through that range warns.
         breakpoint_ = Adw.Breakpoint.new(
-            Adw.BreakpointCondition.parse("max-width: 720px")
+            Adw.BreakpointCondition.parse("max-width: 1000px")
         )
         breakpoint_.add_setter(self._split, "collapsed", True)
         self.add_breakpoint(breakpoint_)
