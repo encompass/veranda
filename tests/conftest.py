@@ -26,14 +26,17 @@ def fake_ctx():
     from veranda.actions.base import ActionContext
 
     notes = []
+    switched = []
     ctx = ActionContext(
         serial="TEST",
         key=0,
         deck_manager=None,
         input_backend=None,
         switch_page=lambda *a: None,
+        switch_profile=lambda serial, target: (switched.append(target) or True),
         set_brightness=lambda *a: None,
         notify=notes.append,
     )
     ctx.notes = notes  # type: ignore[attr-defined]
+    ctx.switched_profiles = switched  # type: ignore[attr-defined]
     return ctx

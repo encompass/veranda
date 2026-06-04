@@ -5,7 +5,11 @@ from __future__ import annotations
 from typing import Any, Iterator
 
 from veranda.actions.base import Action
-from veranda.actions.deck_control import BrightnessAction, SwitchPageAction
+from veranda.actions.deck_control import (
+    BrightnessAction,
+    SwitchPageAction,
+    SwitchProfileAction,
+)
 from veranda.actions.gnome_shortcut import GnomeShortcutAction
 from veranda.actions.hotkey import HotkeyAction
 from veranda.actions.multi import DelayAction, MultiAction
@@ -40,6 +44,7 @@ ACTION_CATALOG: list[type[Action]] = [
     GnomeShortcutAction,
     MultiAction,
     SwitchPageAction,
+    SwitchProfileAction,
     BrightnessAction,
     # Special Buttons (live widgets)
     ClockWidget,

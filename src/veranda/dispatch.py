@@ -26,6 +26,7 @@ class Dispatcher:
         deck_manager: DeckManager,
         input_backend: InputBackend,
         switch_page: Callable[[str, int], None],
+        switch_profile: Callable[[str, str], bool],
         set_brightness: Callable[[str, int], None],
         notify: Callable[[str], None],
     ) -> None:
@@ -33,6 +34,7 @@ class Dispatcher:
         self._deck_manager = deck_manager
         self._input_backend = input_backend
         self._switch_page = switch_page
+        self._switch_profile = switch_profile
         self._set_brightness = set_brightness
         self._notify = notify
 
@@ -49,6 +51,7 @@ class Dispatcher:
             deck_manager=self._deck_manager,
             input_backend=self._input_backend,
             switch_page=self._switch_page,
+            switch_profile=self._switch_profile,
             set_brightness=self._set_brightness,
             notify=self._notify,
         )

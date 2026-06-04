@@ -47,6 +47,44 @@ class SwitchPageAction(Action):
         ctx.switch_page(ctx.serial, self.page)
 
 
+class SwitchProfileAction(Action):
+    TYPE_ID = "switch_profile"
+    NAME = "Switch Profile"
+    DESCRIPTION = "Activate another profile on this deck"
+    ICON = "view-grid-symbolic"
+    CATEGORY = "Deck"
+
+    @property
+    def profile(self) -> str:
+        return str(self.params.get("profile", "")).strip()
+
+    def default_label(self) -> str:
+        return self.profile or "Profile"
+
+    def summary(self) -> str:
+        return f"Switch to “{self.profile}”" if self.profile else "Pick a profile"
+
+    def build_editor_rows(self, button, on_change: Callable[[], None]):
+        from gi.repository import Adw
+
+        row = Adw.EntryRow(title="Profile name or number")
+        row.set_text(self.profile)
+
+        def changed(entry):
+            self.params["profile"] = entry.get_text().strip()
+            on_change()
+
+        row.connect("changed", changed)
+        return [row]
+
+    def execute(self, ctx: ActionContext) -> None:
+        if not self.profile:
+            ctx.notify("No profile chosen for this key")
+            return
+        if not ctx.switch_profile(ctx.serial, self.profile):
+            ctx.notify(f"No profile named “{self.profile}”")
+
+
 class BrightnessAction(Action):
     TYPE_ID = "brightness"
     NAME = "Brightness"

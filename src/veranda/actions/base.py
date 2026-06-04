@@ -37,6 +37,12 @@ class ActionContext:
     switch_page: Callable[[str, int], None]
     """Call ``switch_page(serial, page_index)`` to change the active page."""
 
+    switch_profile: Callable[[str, str], bool]
+    """Call ``switch_profile(serial, name_or_index)`` to activate a profile.
+
+    Accepts a profile name (case-insensitive) or a 0-based index as a string;
+    returns ``True`` if a matching profile was found."""
+
     set_brightness: Callable[[str, int], None]
     """Call ``set_brightness(serial, percent)`` to change and persist brightness."""
 

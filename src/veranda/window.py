@@ -73,6 +73,7 @@ class VerandaWindow(Adw.ApplicationWindow):
             self._deck_manager,
             self._input_backend,
             switch_page=self._switch_page,
+            switch_profile=self._switch_profile_for,
             set_brightness=self._set_device_brightness,
             notify=self.notify,
         )
@@ -878,6 +879,35 @@ class VerandaWindow(Adw.ApplicationWindow):
             self._refresh()
         else:
             self._deck_manager.apply_page(serial, profile.current_page())
+
+    def _switch_profile_for(self, serial: str, target: str) -> bool:
+        """Activate a profile by name (case-insensitive) or 0-based index.
+
+        Serial-aware so a Switch Profile key works on any connected deck.
+        Returns True when a matching profile was found (even if already active).
+        """
+        state = self._config.decks.get(serial)
+        if state is None:
+            return False
+        names = [p.name for p in state.profiles]
+        target = str(target).strip()
+        idx = None
+        if target.isdigit() and 0 <= int(target) < len(names):
+            idx = int(target)
+        else:
+            folded = target.casefold()
+            idx = next((i for i, n in enumerate(names) if n.casefold() == folded), None)
+        if idx is None:
+            return False
+        if idx != state.active_profile:
+            state.active_profile = idx
+            self._config.save()
+            if serial == self._current_serial:
+                self._refresh()
+            else:
+                self._deck_manager.apply_page(serial, state.current_profile().current_page())
+            self._dbus.notify_changed()
+        return True
 
     def _page_step(self, delta: int) -> None:
         if self._current_serial is None:
