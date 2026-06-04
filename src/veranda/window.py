@@ -109,10 +109,10 @@ class VerandaWindow(Adw.ApplicationWindow):
         # Live "Special Buttons" refresh driver.
         self._live = LiveButtonController(self._repaint_live_key)
 
-        # Re-render keys when the system switches light/dark (theme default color).
-        self._theme_handler = Adw.StyleManager.get_default().connect(
-            "notify::dark", self._on_theme_changed
-        )
+        # Re-render keys when the system theme (light/dark) or accent changes.
+        _sm = Adw.StyleManager.get_default()
+        self._theme_handler = _sm.connect("notify::dark", self._on_theme_changed)
+        self._accent_handler = _sm.connect("notify::accent-color", self._on_theme_changed)
 
         self._deck_manager.start()
         if self._config.settings.run_in_background:
@@ -974,9 +974,13 @@ class VerandaWindow(Adw.ApplicationWindow):
             return
         self._shutdown_done = True
         self._config.save()
+        _sm = Adw.StyleManager.get_default()
         if self._theme_handler:
-            Adw.StyleManager.get_default().disconnect(self._theme_handler)
+            _sm.disconnect(self._theme_handler)
             self._theme_handler = 0
+        if self._accent_handler:
+            _sm.disconnect(self._accent_handler)
+            self._accent_handler = 0
         self._live.stop()
         self._screensaver.stop()
         self._tray.stop()

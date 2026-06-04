@@ -69,6 +69,21 @@ def invalidate_theme_cache() -> None:
     _rasterize_named.cache_clear()
 
 
+def accent_background() -> tuple[int, int, int]:
+    """The live GNOME accent color as an (r, g, b) tuple."""
+    try:
+        rgba = Adw.StyleManager.get_default().get_property("accent-color-rgba")
+        return (round(rgba.red * 255), round(rgba.green * 255), round(rgba.blue * 255))
+    except Exception:  # noqa: BLE001
+        return (53, 132, 228)
+
+
+def resolve_background(value: str) -> tuple[int, int, int]:
+    if value == "accent":
+        return accent_background()
+    return _parse_hex(value) or theme_background()
+
+
 def _parse_hex(value: str) -> tuple[int, int, int] | None:
     if not value:
         return None
@@ -197,7 +212,7 @@ def _draw_badge(image: Image.Image, text: str) -> None:
 def _compose(size: tuple[int, int], button: ButtonConfig) -> Image.Image:
     """Build an RGB key image: optional icon + a text label (+ live badge)."""
     width, height = size
-    bg = _parse_hex(button.background) or theme_background()
+    bg = resolve_background(button.background)
     fg = _contrast(bg)
     image = Image.new("RGB", size, bg)
 

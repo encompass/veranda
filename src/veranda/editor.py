@@ -84,21 +84,28 @@ class ButtonEditor(Adw.Dialog):
         font_row.connect("notify::value", self._on_font_changed)
         appearance.add(font_row)
 
-        bg_row = Adw.ActionRow(title="Background", subtitle="Key color")
+        self._bg_row = Adw.ActionRow(title="Background")
         self._color_btn = Gtk.ColorDialogButton(
             dialog=Gtk.ColorDialog(), valign=Gtk.Align.CENTER
         )
-        self._sync_color_button()
         self._color_btn.connect("notify::rgba", self._on_color_changed)
-        bg_row.add_suffix(self._color_btn)
+        self._bg_row.add_suffix(self._color_btn)
+        accent_btn = Gtk.Button(
+            label="Accent", valign=Gtk.Align.CENTER,
+            tooltip_text="Follow the system accent color",
+        )
+        accent_btn.add_css_class("flat")
+        accent_btn.connect("clicked", self._on_use_accent)
+        self._bg_row.add_suffix(accent_btn)
         reset = Gtk.Button(
             icon_name="edit-clear-symbolic", valign=Gtk.Align.CENTER,
             tooltip_text="Use the theme default",
         )
         reset.add_css_class("flat")
         reset.connect("clicked", self._on_color_reset)
-        bg_row.add_suffix(reset)
-        appearance.add(bg_row)
+        self._bg_row.add_suffix(reset)
+        appearance.add(self._bg_row)
+        self._sync_color_button()
         page.add(appearance)
 
         # -- action -------------------------------------------------------
@@ -229,7 +236,7 @@ class ButtonEditor(Adw.Dialog):
 
         from veranda import render
 
-        rgb = render._parse_hex(self._button.background) or render.theme_background()
+        rgb = render.resolve_background(self._button.background)
         rgba = Gdk.RGBA()
         rgba.red, rgba.green, rgba.blue, rgba.alpha = (
             rgb[0] / 255, rgb[1] / 255, rgb[2] / 255, 1.0,
@@ -237,6 +244,10 @@ class ButtonEditor(Adw.Dialog):
         self._setting_color = True
         self._color_btn.set_rgba(rgba)
         self._setting_color = False
+        bg = self._button.background
+        self._bg_row.set_subtitle(
+            "Accent color" if bg == "accent" else "Custom" if bg else "Theme default"
+        )
 
     def _on_color_changed(self, *_a) -> None:
         if getattr(self, "_setting_color", False):
@@ -245,6 +256,12 @@ class ButtonEditor(Adw.Dialog):
         self._button.background = "#%02x%02x%02x" % (
             round(rgba.red * 255), round(rgba.green * 255), round(rgba.blue * 255),
         )
+        self._bg_row.set_subtitle("Custom")
+        self._notify()
+
+    def _on_use_accent(self, _btn) -> None:
+        self._button.background = "accent"
+        self._sync_color_button()
         self._notify()
 
     def _on_color_reset(self, _btn) -> None:
