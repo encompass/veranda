@@ -28,6 +28,13 @@ an action onto a button to bind it. Press the physical key to run the action.
   header dropdown and managed in a Settings window (add/rename/duplicate/delete).
 - **Lock sync**: optionally blank a deck (brightness 0) when the GNOME session
   locks, and restore it on unlock — a per-device Settings toggle.
+- **Auto-switch profiles by focused app**: via the GNOME Shell extension, the
+  active profile follows the foreground app (configure in Settings → Automation).
+- **Drop an image from Files** onto a key to set its icon; **per-key colors**
+  follow the GNOME theme or accent color.
+- **Keyboard shortcuts** (Ctrl+Q/Ctrl+,/Ctrl+?/Ctrl+Page Up·Down) with a
+  Shortcuts window; remembers window size; ships an app icon + AppStream
+  metainfo so it installs cleanly via GNOME Software.
 - **Run in the background**: keep Veranda running when the window is closed,
   with an option to **start hidden**. It appears in GNOME's top-right via a
   StatusNotifierItem tray icon and the Background Apps menu (see below).
