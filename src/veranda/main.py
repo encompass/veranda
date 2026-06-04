@@ -32,19 +32,46 @@ def _load_css() -> None:
 class VerandaApp(Adw.Application):
     def __init__(self) -> None:
         super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
+        self._window: VerandaWindow | None = None
+        self._first_activation = True
 
     def do_startup(self) -> None:
         Adw.Application.do_startup(self)
         _load_css()
+        # "app.show" lets a notification (or the bus) bring the window forward.
+        show = Gio.SimpleAction.new("show", None)
+        show.connect("activate", lambda *_a: self._present())
+        self.add_action(show)
 
     def do_activate(self) -> None:
-        window = self.props.active_window
-        if window is None:
-            window = VerandaWindow(self)
-            # On first launch, honor "start hidden" (stay in the background).
-            if window.should_start_hidden():
-                return
-        window.present()
+        # Track our own window reference: active_window is None while hidden,
+        # so relying on it would spawn duplicate invisible windows.
+        if self._window is None:
+            self._window = VerandaWindow(self)
+        first = self._first_activation
+        self._first_activation = False
+        # Only the very first launch honors "start hidden"; any later
+        # activation (clicking the app icon, a second launch) shows the window.
+        if first and self._window.should_start_hidden():
+            self._notify_running_hidden()
+            return
+        self._present()
+
+    def _present(self) -> None:
+        if self._window is not None:
+            self._window.present()
+
+    def _notify_running_hidden(self) -> None:
+        note = Gio.Notification.new("Veranda is running in the background")
+        note.set_body(
+            "Open it again from its app icon, or quit it from the tray menu. "
+            "For a top-bar icon, enable the AppIndicator GNOME extension."
+        )
+        note.set_default_action("app.show")
+        try:
+            self.send_notification("veranda-running", note)
+        except Exception:  # noqa: BLE001 - notifications are best-effort
+            pass
 
 
 def main() -> int:
