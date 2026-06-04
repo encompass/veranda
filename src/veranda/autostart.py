@@ -79,6 +79,33 @@ def ensure_app_desktop_entry() -> None:
         log.debug("could not write application desktop entry: %s", exc)
 
 
+# -- GNOME Shell search provider registration ----------------------------
+
+def search_provider_file() -> Path:
+    return (
+        _data_home() / "gnome-shell" / "search-providers"
+        / f"{APP_ID}.search-provider.ini"
+    )
+
+
+def ensure_search_provider() -> None:
+    """Register the profile search provider with GNOME Shell (idempotent)."""
+    path = search_provider_file()
+    contents = (
+        "[Shell Search Provider]\n"
+        f"DesktopId={DESKTOP_NAME}\n"
+        f"BusName={APP_ID}\n"
+        f"ObjectPath=/{APP_ID.replace('.', '/')}/SearchProvider\n"
+        "Version=2\n"
+    )
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if not path.exists() or path.read_text() != contents:
+            path.write_text(contents)
+    except OSError as exc:
+        log.debug("could not write search provider file: %s", exc)
+
+
 # -- autostart entry (toggled by the "Open at login" setting) ------------
 
 def autostart_file() -> Path:

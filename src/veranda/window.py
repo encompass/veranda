@@ -26,6 +26,7 @@ from veranda.settings import SettingsDialog, prompt_text
 from veranda.statusicon import TrayIcon
 from veranda.background import request_background
 from veranda.dbusservice import VerandaDBusService
+from veranda.searchprovider import VerandaSearchProvider
 from veranda.livebuttons import LiveButtonController
 from veranda.undo import UndoStack
 from veranda import autostart, transfer
@@ -106,6 +107,10 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._dbus = VerandaDBusService(self)
         self._dbus.register()
         self.connect("notify::visible", lambda *_a: self._dbus.notify_changed())
+
+        # Profile search results in the GNOME Shell overview.
+        self._search = VerandaSearchProvider(self)
+        self._search.register()
 
         # Live "Special Buttons" refresh driver.
         self._live = LiveButtonController(self._repaint_live_key)
@@ -1180,6 +1185,7 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._screensaver.stop()
         self._tray.stop()
         self._dbus.unregister()
+        self._search.unregister()
         self._deck_manager.stop()
         self._input_backend.close()
 

@@ -146,6 +146,13 @@ gnome-extensions enable veranda@encompass.gmail.com
 The extension's top-bar icon appears only while the Veranda app is running, so
 pair it with "Run in the background" / "Open at login".
 
+## Search the overview
+
+Veranda registers a GNOME Shell **search provider**, so you can press `Super`,
+type a profile name, and hit Enter to switch the deck to it — no window needed.
+The provider file is installed automatically on first run; new providers are
+picked up after the next login.
+
 ## Command line
 
 Veranda is a single-instance app, so running `veranda` with control options
