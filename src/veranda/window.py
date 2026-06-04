@@ -128,11 +128,25 @@ class VerandaWindow(Adw.ApplicationWindow):
             ("import", lambda: self.import_profile_dialog()),
             ("export", lambda: self.export_profile_dialog()),
             ("about", self._show_about),
+            ("shortcuts", self._show_shortcuts),
+            ("next-page", lambda: self._page_step(1)),
+            ("prev-page", lambda: self._page_step(-1)),
             ("quit", self._real_quit),
         ):
             action = Gio.SimpleAction.new(name, None)
             action.connect("activate", lambda _a, _p, h=handler: h())
             self.add_action(action)
+
+        app = self.get_application()
+        if app is not None:
+            for action_name, accels in (
+                ("win.quit", ["<Ctrl>q"]),
+                ("win.preferences", ["<Ctrl>comma"]),
+                ("win.shortcuts", ["<Ctrl>question", "F1"]),
+                ("win.next-page", ["<Ctrl>Page_Down"]),
+                ("win.prev-page", ["<Ctrl>Page_Up"]),
+            ):
+                app.set_accels_for_action(action_name, accels)
 
     def _build_menu(self) -> Gio.Menu:
         menu = Gio.Menu()
@@ -143,10 +157,37 @@ class VerandaWindow(Adw.ApplicationWindow):
         backup.append("Export Buttons…", "win.export")
         menu.append_section(None, backup)
         about = Gio.Menu()
+        about.append("Keyboard Shortcuts", "win.shortcuts")
         about.append("About Veranda", "win.about")
         about.append("Quit", "win.quit")
         menu.append_section(None, about)
         return menu
+
+    def _show_shortcuts(self) -> None:
+        dialog = Adw.ShortcutsDialog()
+
+        general = Adw.ShortcutsSection(title="General")
+        for title, accel in (
+            ("Preferences", "<Ctrl>comma"),
+            ("Keyboard Shortcuts", "<Ctrl>question"),
+            ("Previous Page", "<Ctrl>Page_Up"),
+            ("Next Page", "<Ctrl>Page_Down"),
+            ("Quit", "<Ctrl>q"),
+        ):
+            general.add(Adw.ShortcutsItem(title=title, accelerator=accel))
+        dialog.add(general)
+
+        editing = Adw.ShortcutsSection(title="Deck Editing")
+        for title, subtitle in (
+            ("Bind an action", "Drag from the action list onto a key"),
+            ("Move or swap a key", "Drag one key onto another"),
+            ("Edit a key", "Click a bound key"),
+            ("Set a custom icon", "Drop an image file onto a key"),
+        ):
+            editing.add(Adw.ShortcutsItem(title=title, subtitle=subtitle))
+        dialog.add(editing)
+
+        dialog.present(self)
 
     # -- UI construction --------------------------------------------------
 
