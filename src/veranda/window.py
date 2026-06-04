@@ -27,6 +27,7 @@ from veranda.statusicon import TrayIcon
 from veranda.background import request_background
 from veranda.dbusservice import VerandaDBusService
 from veranda.livebuttons import LiveButtonController
+from veranda.undo import UndoStack
 from veranda import autostart, transfer
 
 log = logging.getLogger(__name__)
@@ -108,6 +109,7 @@ class VerandaWindow(Adw.ApplicationWindow):
 
         # Live "Special Buttons" refresh driver.
         self._live = LiveButtonController(self._repaint_live_key)
+        self._undo = UndoStack()
 
         # Re-render keys when the system theme (light/dark) or accent changes.
         _sm = Adw.StyleManager.get_default()
@@ -135,6 +137,8 @@ class VerandaWindow(Adw.ApplicationWindow):
             ("shortcuts", self._show_shortcuts),
             ("next-page", lambda: self._page_step(1)),
             ("prev-page", lambda: self._page_step(-1)),
+            ("undo", self._do_undo),
+            ("redo", self._do_redo),
             ("quit", self._real_quit),
         ):
             action = Gio.SimpleAction.new(name, None)
@@ -149,6 +153,8 @@ class VerandaWindow(Adw.ApplicationWindow):
                 ("win.shortcuts", ["<Ctrl>question", "F1"]),
                 ("win.next-page", ["<Ctrl>Page_Down"]),
                 ("win.prev-page", ["<Ctrl>Page_Up"]),
+                ("win.undo", ["<Ctrl>z"]),
+                ("win.redo", ["<Ctrl>y", "<Ctrl><Shift>z"]),
             ):
                 app.set_accels_for_action(action_name, accels)
 
@@ -172,6 +178,8 @@ class VerandaWindow(Adw.ApplicationWindow):
 
         general = Adw.ShortcutsSection(title="General")
         for title, accel in (
+            ("Undo", "<Ctrl>z"),
+            ("Redo", "<Ctrl>y"),
             ("Preferences", "<Ctrl>comma"),
             ("Keyboard Shortcuts", "<Ctrl>question"),
             ("Previous Page", "<Ctrl>Page_Up"),
@@ -466,6 +474,7 @@ class VerandaWindow(Adw.ApplicationWindow):
     def _on_drop(self, key: int, item: ActionItem) -> None:
         if self._current_serial is None:
             return
+        self._record_undo()
         page = self._config.deck(self._current_serial).current_page()
         action = item.new_action()
         button = ButtonConfig(
@@ -517,6 +526,7 @@ class VerandaWindow(Adw.ApplicationWindow):
             self.notify(f"Couldn't import the image: {exc}")
             return
 
+        self._record_undo()
         page = self._config.deck(self._current_serial).current_page()
         button = page.buttons.get(key)
         if button is None:
@@ -528,10 +538,55 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._deck_manager.update_button(self._current_serial, key, button)
         self.notify("Icon set from image")
 
+    # -- undo / redo ------------------------------------------------------
+
+    def _snapshot(self):
+        if self._current_serial is None:
+            return None
+        state = self._config.decks.get(self._current_serial)
+        return (self._current_serial, state.to_dict()) if state is not None else None
+
+    def _record_undo(self) -> None:
+        snap = self._snapshot()
+        if snap is not None:
+            self._undo.record(snap)
+
+    def _apply_snapshot(self, snap) -> None:
+        serial, data = snap
+        self._config.decks[serial] = DeckState.from_dict(serial, data)
+        self._config.save()
+        if serial == self._current_serial:
+            self._refresh()
+        else:
+            self._deck_manager.apply_page(serial, self._config.decks[serial].current_page())
+
+    def _do_undo(self) -> None:
+        cur = self._snapshot()
+        if cur is None:
+            return
+        snap = self._undo.undo(cur)
+        if snap is None:
+            self.notify("Nothing to undo")
+            return
+        self._apply_snapshot(snap)
+        self.notify("Undone")
+
+    def _do_redo(self) -> None:
+        cur = self._snapshot()
+        if cur is None:
+            return
+        snap = self._undo.redo(cur)
+        if snap is None:
+            self.notify("Nothing to redo")
+            return
+        self._apply_snapshot(snap)
+        self.notify("Redone")
+
     def _on_move(self, source_key: int, target_key: int) -> None:
         """Move/swap a binding between two keys via drag-and-drop."""
         if self._current_serial is None or source_key == target_key:
             return
+        self._record_undo()
         page = self._config.deck(self._current_serial).current_page()
         src = page.buttons.get(source_key)
         if src is None:
@@ -573,6 +628,7 @@ class VerandaWindow(Adw.ApplicationWindow):
     def _remove_button(self, key: int) -> None:
         if self._current_serial is None:
             return
+        self._record_undo()
         self._config.deck(self._current_serial).current_page().buttons.pop(key, None)
         self._config.save()
         self._grid.update_key(key, None)
@@ -758,6 +814,7 @@ class VerandaWindow(Adw.ApplicationWindow):
     def _add_page(self) -> None:
         if self._current_serial is None:
             return
+        self._record_undo()
         profile = self._config.deck(self._current_serial).current_profile()
         profile.pages.append(Page(name=f"Page {len(profile.pages) + 1}"))
         self._switch_page(self._current_serial, len(profile.pages) - 1)
@@ -792,6 +849,7 @@ class VerandaWindow(Adw.ApplicationWindow):
     def _do_remove_page(self) -> None:
         if self._current_serial is None:
             return
+        self._record_undo()
         profile = self._config.deck(self._current_serial).current_profile()
         idx = profile.active_page
         del profile.pages[idx]
