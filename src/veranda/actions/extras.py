@@ -64,8 +64,11 @@ class OpenFolderAction(Action):
     def build_editor_rows(self, button, on_change: Callable[[], None]):
         from gi.repository import Adw, Gtk
 
+        from veranda.actions.validation import attach_validity, folder_status
+
         row = Adw.EntryRow(title="Folder path")
         row.set_text(self.path)
+        attach_validity(row, folder_status)
         row.connect("changed", lambda r: (self.params.__setitem__("path", r.get_text()), on_change()))
 
         choose = Gtk.Button(icon_name="folder-open-symbolic", valign=Gtk.Align.CENTER)

@@ -31,8 +31,11 @@ class OpenUrlAction(Action):
     def build_editor_rows(self, button, on_change: Callable[[], None]):
         from gi.repository import Adw
 
+        from veranda.actions.validation import attach_validity, path_status
+
         row = Adw.EntryRow(title="URL or file path")
         row.set_text(self.target)
+        attach_validity(row, path_status)
 
         def changed(entry):
             self.params["target"] = entry.get_text()
