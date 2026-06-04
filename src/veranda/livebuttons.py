@@ -7,7 +7,11 @@ from typing import Callable
 
 from gi.repository import GLib
 
+from veranda import render
+
 log = logging.getLogger(__name__)
+
+ANIM_INTERVAL_MS = 66  # ~15 fps for animated GIF keys
 
 
 class LiveButtonController:
@@ -28,6 +32,10 @@ class LiveButtonController:
         if page is None:
             return
         for key, button in page.buttons.items():
+            if render.is_animated_icon(button.icon):
+                self._timeouts.append(
+                    GLib.timeout_add(ANIM_INTERVAL_MS, self._anim_cb(key))
+                )
             action = button.action
             if action is None or not getattr(action, "DYNAMIC", False):
                 continue
@@ -71,6 +79,13 @@ class LiveButtonController:
 
     def _repaint_cb(self, key: int) -> Callable[[], None]:
         return lambda: self._repaint(key)
+
+    def _anim_cb(self, key: int) -> Callable[[], bool]:
+        def tick() -> bool:
+            self._repaint(key)
+            return True
+
+        return tick
 
     def _tick_cb(self, action) -> Callable[[], bool]:
         def tick() -> bool:

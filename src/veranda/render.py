@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import io
 import logging
+import time
 import warnings
 from functools import lru_cache
 
@@ -193,6 +194,51 @@ def rasterize_icon(icon: str, size: int, color=(240, 240, 240)) -> Image.Image |
     return _rasterize_named(icon, size, tuple(color))
 
 
+@lru_cache(maxsize=32)
+def _gif_frames(path: str):
+    """Return ((rgba_frame, duration_ms), ...) for an animated GIF, else None."""
+    try:
+        frames = []
+        with Image.open(path) as im:
+            if not getattr(im, "is_animated", False) or im.n_frames <= 1:
+                return None
+            for i in range(im.n_frames):
+                im.seek(i)
+                duration = im.info.get("duration") or 100
+                frames.append((im.convert("RGBA").copy(), int(duration)))
+        return tuple(frames)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def is_animated_icon(icon: str) -> bool:
+    return bool(icon) and "/" in icon and icon.lower().endswith(".gif") and _gif_frames(icon) is not None
+
+
+def _cover(img: Image.Image, size: tuple[int, int]) -> Image.Image:
+    iw, ih = img.size
+    w, h = size
+    scale = max(w / iw, h / ih)
+    nw, nh = max(1, int(iw * scale)), max(1, int(ih * scale))
+    resized = img.resize((nw, nh), Image.LANCZOS)
+    x, y = (nw - w) // 2, (nh - h) // 2
+    return resized.crop((x, y, x + w, y + h))
+
+
+def _gif_frame_at(path: str, size: tuple[int, int], t: float) -> Image.Image | None:
+    frames = _gif_frames(path)
+    if not frames:
+        return None
+    total = sum(d for _, d in frames) or 1
+    ms = (t * 1000) % total
+    acc = 0
+    for frame, duration in frames:
+        acc += duration
+        if ms < acc:
+            return _cover(frame, size)
+    return _cover(frames[-1][0], size)
+
+
 def _draw_badge(image: Image.Image, text: str) -> None:
     """Draw a small count/badge pill in the top-right corner (notification style)."""
     width, height = image.size
@@ -231,7 +277,10 @@ def _compose(size: tuple[int, int], button: ButtonConfig) -> Image.Image:
     has_label = bool(label)
     label_band = int(height * 0.30) if has_label else 0
 
-    if icon_spec:
+    animated = _gif_frame_at(icon_spec, size, time.monotonic()) if icon_spec else None
+    if animated is not None:
+        image.paste(animated, (0, 0), animated)  # full-bleed animation
+    elif icon_spec:
         avail_h = height - label_band
         target = max(8, int(min(width, avail_h) * 0.80))
         icon = rasterize_icon(icon_spec, target, fg)
