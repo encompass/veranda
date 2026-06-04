@@ -110,8 +110,10 @@ Two top-right surfaces are used:
 For a truly native presence — a **Quick Settings** entry (like Caffeine) and a
 top-bar indicator — Veranda ships an optional GNOME Shell extension in
 `extension/`. It talks to the running app over D-Bus
-(`com.encompass.Veranda.Control`) to show/hide the window, switch profiles, and
-quit, and shows the connected device in its menu.
+(`com.encompass.Veranda.Control`) to show/hide the window, switch profiles, set
+a **brightness slider**, and quit. It also **launches the app on demand** if it
+isn't running, and the **top-bar icon only appears while a Stream Deck is
+connected**.
 
 GNOME Shell's built-in system indicators (Wi-Fi, volume, battery) are core and
 can't be extended by an app — a Shell extension is the only supported way to add

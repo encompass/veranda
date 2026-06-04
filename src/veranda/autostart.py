@@ -1,9 +1,9 @@
-"""Manage an XDG autostart entry so Veranda can launch on login.
+"""Manage Veranda's desktop entries.
 
-We write/remove ``~/.config/autostart/<app-id>.desktop`` directly — the file's
-presence is the single source of truth (no separate persisted flag to drift).
-Combined with the "start hidden" + "run in background" settings, this lets
-Veranda come up quietly in the background at login.
+- A regular application entry in ``~/.local/share/applications`` so the app is
+  launchable from the grid and by the GNOME Shell extension (launch-on-demand).
+- An optional autostart entry in ``~/.config/autostart`` (the "Open at login"
+  setting). The file's presence is the single source of truth.
 """
 
 from __future__ import annotations
@@ -19,30 +19,56 @@ log = logging.getLogger(__name__)
 
 DESKTOP_NAME = f"{APP_ID}.desktop"
 
-_TEMPLATE = """[Desktop Entry]
-Type=Application
-Name=Veranda
-Comment=Manage your Elgato Stream Deck
-Exec={exec}
-Icon={icon}
-Terminal=false
-Categories=Utility;
-X-GNOME-Autostart-enabled=true
-"""
-
-
-def _autostart_dir() -> Path:
-    base = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
-    return Path(base) / "autostart"
-
-
-def autostart_file() -> Path:
-    return _autostart_dir() / DESKTOP_NAME
-
 
 def launch_command() -> str:
-    """The command the autostart entry runs (current interpreter + module)."""
+    """The command used to launch the app (current interpreter + module)."""
     return f"{sys.executable} -m veranda"
+
+
+def _desktop_contents(autostart: bool) -> str:
+    extra = "X-GNOME-Autostart-enabled=true\n" if autostart else ""
+    return (
+        "[Desktop Entry]\n"
+        "Type=Application\n"
+        "Name=Veranda\n"
+        "Comment=Manage your Elgato Stream Deck\n"
+        f"Exec={launch_command()}\n"
+        f"Icon={APP_ID}\n"
+        "Terminal=false\n"
+        "Categories=Utility;\n"
+        "StartupNotify=true\n"
+        + extra
+    )
+
+
+def _config_home() -> Path:
+    return Path(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"))
+
+
+def _data_home() -> Path:
+    return Path(os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share"))
+
+
+# -- application entry (always installed) --------------------------------
+
+def applications_file() -> Path:
+    return _data_home() / "applications" / DESKTOP_NAME
+
+
+def ensure_app_desktop_entry() -> None:
+    """Write the launchable application entry (idempotent; keeps Exec current)."""
+    path = applications_file()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(_desktop_contents(autostart=False))
+    except OSError as exc:
+        log.debug("could not write application desktop entry: %s", exc)
+
+
+# -- autostart entry (toggled by the "Open at login" setting) ------------
+
+def autostart_file() -> Path:
+    return _config_home() / "autostart" / DESKTOP_NAME
 
 
 def is_enabled() -> bool:
@@ -53,7 +79,7 @@ def set_enabled(enabled: bool) -> None:
     path = autostart_file()
     if enabled:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(_TEMPLATE.format(exec=launch_command(), icon=APP_ID))
+        path.write_text(_desktop_contents(autostart=True))
         log.info("autostart enabled at %s", path)
     else:
         try:

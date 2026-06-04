@@ -12,7 +12,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, Gtk  # noqa: E402
 
-from veranda import APP_ID  # noqa: E402
+from veranda import APP_ID, autostart  # noqa: E402
 from veranda.window import VerandaWindow  # noqa: E402
 
 log = logging.getLogger(__name__)
@@ -38,6 +38,7 @@ class VerandaApp(Adw.Application):
     def do_startup(self) -> None:
         Adw.Application.do_startup(self)
         _load_css()
+        autostart.ensure_app_desktop_entry()  # launchable + lets the extension start us
         # "app.show" lets a notification (or the bus) bring the window forward.
         show = Gio.SimpleAction.new("show", None)
         show.connect("activate", lambda *_a: self._present())
