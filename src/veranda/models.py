@@ -21,11 +21,13 @@ class AppSettings:
 
     run_in_background: bool = False
     start_hidden: bool = False
+    tray_warning_dismissed: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "run_in_background": self.run_in_background,
             "start_hidden": self.start_hidden,
+            "tray_warning_dismissed": self.tray_warning_dismissed,
         }
 
     @classmethod
@@ -34,6 +36,7 @@ class AppSettings:
         return cls(
             run_in_background=bool(data.get("run_in_background", False)),
             start_hidden=bool(data.get("start_hidden", False)),
+            tray_warning_dismissed=bool(data.get("tray_warning_dismissed", False)),
         )
 
 

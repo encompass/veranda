@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import glob
 import logging
+import subprocess
 
 import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gio, GObject, Gtk  # noqa: E402
+from gi.repository import Adw, Gio, GLib, GObject, Gtk  # noqa: E402
 
 from veranda import APP_ID, __version__
 from veranda.config import AppConfig, config_dir
@@ -96,6 +97,10 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._deck_manager.start()
         if self._config.settings.run_in_background:
             self._enable_background()
+            # If the window will be visible, warn (once) about a missing tray
+            # host after the watcher has had a moment to appear.
+            if not self.should_start_hidden():
+                GLib.timeout_add_seconds(3, self._maybe_warn_no_tray_host)
         self._refresh()
 
     # -- actions / menu ---------------------------------------------------
@@ -680,6 +685,7 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._config.save()
         if enabled:
             self._enable_background()
+            GLib.timeout_add_seconds(2, self._maybe_warn_no_tray_host)
         else:
             self._disable_background()
 
@@ -699,6 +705,76 @@ class VerandaWindow(Adw.ApplicationWindow):
 
     def _disable_background(self) -> None:
         self._tray.stop()
+
+    # -- missing tray-host warning ---------------------------------------
+
+    def _maybe_warn_no_tray_host(self) -> bool:
+        s = self._config.settings
+        if (
+            not s.run_in_background
+            or s.tray_warning_dismissed
+            or self._tray.host_available
+        ):
+            return False  # nothing to warn about
+        self._show_tray_warning()
+        return False  # one-shot timeout
+
+    def _show_tray_warning(self) -> None:
+        # One-time: never auto-show again once it has been raised.
+        self._config.settings.tray_warning_dismissed = True
+        self._config.save()
+
+        uuid = self._find_appindicator_uuid()
+        body = (
+            "Veranda is set to run in the background, but no system-tray host "
+            "is running — so it won't show an icon in the top bar. You can still "
+            "reopen it from its app icon, or quit it from its menu."
+        )
+        if uuid:
+            body += "\n\nEnable the AppIndicator GNOME extension to get a top-bar icon."
+        else:
+            body += (
+                "\n\nInstall an AppIndicator GNOME extension "
+                "(e.g. “AppIndicator and KStatusNotifier Support”) for a top-bar icon."
+            )
+
+        dialog = Adw.AlertDialog(heading="No tray icon available", body=body)
+        dialog.add_response("close", "Got It")
+        if uuid:
+            dialog.add_response("enable", "Enable Extension")
+            dialog.set_response_appearance("enable", Adw.ResponseAppearance.SUGGESTED)
+            dialog.set_default_response("enable")
+        dialog.set_close_response("close")
+        dialog.connect(
+            "response",
+            lambda _d, resp: self._enable_appindicator(uuid) if resp == "enable" else None,
+        )
+        dialog.present(self)
+
+    def _find_appindicator_uuid(self) -> str | None:
+        """Return an installed AppIndicator extension uuid, if any."""
+        try:
+            out = subprocess.run(
+                ["gnome-extensions", "list"],
+                capture_output=True, text=True, timeout=5,
+            ).stdout
+        except (OSError, subprocess.SubprocessError):
+            return None
+        installed = set(out.split())
+        for uuid in (
+            "ubuntu-appindicators@ubuntu.com",
+            "appindicatorsupport@rgcjonas.gmail.com",
+        ):
+            if uuid in installed:
+                return uuid
+        return None
+
+    def _enable_appindicator(self, uuid: str) -> None:
+        try:
+            subprocess.run(["gnome-extensions", "enable", uuid], check=True, timeout=5)
+            self.notify("Enabling AppIndicator support… the icon should appear shortly.")
+        except (OSError, subprocess.SubprocessError) as exc:
+            self.notify(f"Could not enable the extension: {exc}")
 
     def _toggle_window(self) -> None:
         if self.get_visible():

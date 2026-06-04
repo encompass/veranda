@@ -88,8 +88,12 @@ The other action types (command, URL, deck control) work without this.
 ## Running in the background (top-bar icon)
 
 Enable **Settings → General → Run in the background** to keep Veranda alive
-when you close the window (and optionally **Start hidden**). Quit fully from the
-tray menu or **☰ → Quit**.
+when you close the window, with optional **Start hidden** and **Open at login**
+(an XDG autostart entry). Quit fully from the tray menu or **☰ → Quit**.
+
+If background mode is on but no tray host is running, Veranda shows a one-time
+notice (with a one-click option to enable the AppIndicator extension) so it
+never silently disappears.
 
 Two top-right surfaces are used:
 
