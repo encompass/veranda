@@ -39,17 +39,23 @@ class ActionLibrary(Gtk.ScrolledWindow):
         self.set_child(box)
 
     def _make_preview(self, action_class: type[Action]) -> Gtk.Picture:
-        """A small key preview of what dropping this action would look like."""
+        """A fixed-size key preview of what dropping this action would look like."""
         action = action_class()
         sample = ButtonConfig(
             label=action.default_label() or action_class.NAME,
             icon=action.default_icon(),
             action=action,
         )
-        picture = Gtk.Picture(content_fit=Gtk.ContentFit.CONTAIN, valign=Gtk.Align.CENTER)
+        # Render at the exact display size and center-align so every row's
+        # preview is identical PREVIEW_PX x PREVIEW_PX (never stretched to fill).
+        picture = Gtk.Picture(
+            content_fit=Gtk.ContentFit.CONTAIN,
+            halign=Gtk.Align.CENTER,
+            valign=Gtk.Align.CENTER,
+        )
         picture.set_size_request(PREVIEW_PX, PREVIEW_PX)
         try:
-            picture.set_paintable(render_preview_texture(sample))
+            picture.set_paintable(render_preview_texture(sample, size=PREVIEW_PX))
         except Exception:  # noqa: BLE001 - fall back silently to a blank tile
             pass
         return picture
