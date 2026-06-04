@@ -274,7 +274,8 @@ class VerandaWindow(Adw.ApplicationWindow):
 
         self._body = Gtk.Stack()
         self._grid = DeckGrid(
-            self._on_drop, self._on_select, self._on_move, self._on_file_drop
+            self._on_drop, self._on_select, self._on_move, self._on_file_drop,
+            self._remove_button,
         )
         board = Gtk.Box(hexpand=True, vexpand=True)
         board.add_css_class("deck-board")

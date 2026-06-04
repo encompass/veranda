@@ -30,6 +30,7 @@ class DeckTile(Gtk.Button):
         on_select: Callable[[int], None],
         on_move: Callable[[int, int], None],
         on_file_drop: Callable[[int, object], None],
+        on_clear: Callable[[int], None],
     ) -> None:
         super().__init__()
         self.key = key
@@ -37,6 +38,7 @@ class DeckTile(Gtk.Button):
         self._on_select = on_select
         self._on_move = on_move
         self._on_file_drop = on_file_drop
+        self._on_clear = on_clear
         self._bound = False
 
         self.add_css_class("deck-tile")
@@ -68,7 +70,54 @@ class DeckTile(Gtk.Button):
         self.connect("clicked", lambda _btn: self._on_select(self.key))
         self._install_drop_target()
         self._install_drag_source()
+        self._install_context_menu()
         self.set_empty()
+
+    # -- context menu / clear ---------------------------------------------
+
+    def _install_context_menu(self) -> None:
+        gesture = Gtk.GestureClick(button=Gdk.BUTTON_SECONDARY)
+        gesture.connect("pressed", self._on_secondary_press)
+        self.add_controller(gesture)
+
+        keys = Gtk.EventControllerKey()
+        keys.connect("key-pressed", self._on_key_pressed)
+        self.add_controller(keys)
+
+    def _menu_button(self, label: str, on_click, destructive: bool = False) -> Gtk.Button:
+        button = Gtk.Button()
+        button.add_css_class("flat")
+        text = Gtk.Label(label=label, xalign=0.0, hexpand=True)
+        if destructive:
+            text.add_css_class("error")
+        button.set_child(text)
+        button.connect("clicked", on_click)
+        return button
+
+    def _on_secondary_press(self, _gesture, _n, x, y) -> None:
+        if not self._bound:
+            return
+        popover = Gtk.Popover(has_arrow=True)
+        popover.connect("closed", lambda p: p.unparent())
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        box.add_css_class("menu")
+        box.append(self._menu_button(
+            "Edit…", lambda _b: (popover.popdown(), self._on_select(self.key))))
+        box.append(self._menu_button(
+            "Clear Key", lambda _b: (popover.popdown(), self._on_clear(self.key)),
+            destructive=True))
+        popover.set_child(box)
+        popover.set_parent(self)
+        rect = Gdk.Rectangle()
+        rect.x, rect.y, rect.width, rect.height = int(x), int(y), 1, 1
+        popover.set_pointing_to(rect)
+        popover.popup()
+
+    def _on_key_pressed(self, _ctrl, keyval, _code, _state) -> bool:
+        if self._bound and keyval in (Gdk.KEY_Delete, Gdk.KEY_BackSpace):
+            self._on_clear(self.key)
+            return True
+        return False
 
     # -- drag source (move a binding to another key) ----------------------
 
