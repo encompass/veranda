@@ -1,0 +1,44 @@
+/* Veranda styles. Uses libadwaita named colors so the UI follows the
+   user's light/dark preference and accent color automatically. */
+
+.deck-tile {
+  padding: 0;
+  border-radius: 16px;
+  transition: outline-color 120ms ease, background-color 120ms ease;
+}
+
+/* Empty tiles read as a dashed drop placeholder. */
+.deck-tile:not(.bound) {
+  background-color: @card_bg_color;
+  border: 1px dashed alpha(currentColor, 0.22);
+}
+
+/* Bound tiles show the composited key image edge-to-edge (rounded by the
+   image's own alpha mask), so drop the frame. */
+.deck-tile.bound {
+  background: none;
+  border: none;
+}
+
+/* The tile currently open in the editor. */
+.deck-tile.selected {
+  outline: 2px solid @accent_color;
+  outline-offset: 2px;
+}
+
+/* Feedback while a compatible drag hovers over a tile. */
+.deck-tile.drop-hover {
+  background-color: alpha(@accent_color, 0.18);
+  outline: 2px dashed @accent_color;
+  outline-offset: -2px;
+}
+
+.deck-tile-empty {
+  opacity: 0.7;
+}
+
+/* The board that holds the grid of tiles. */
+.deck-board {
+  background-color: @window_bg_color;
+  padding: 24px;
+}

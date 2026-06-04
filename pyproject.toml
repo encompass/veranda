@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "veranda"
+version = "0.1.0"
+description = "A modern GTK4/libadwaita Stream Deck manager for Linux"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "Veranda contributors" }]
+dependencies = [
+    "streamdeck>=0.9.5",
+    "pillow>=10",
+    "evdev>=1.6",
+    # PyGObject is intentionally NOT listed: Veranda uses the system 'gi'
+    # bindings (GTK4 + libadwaita). Run inside a venv created with
+    # `--system-site-packages` so the system PyGObject is visible.
+]
+
+[project.scripts]
+veranda = "veranda.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+veranda = ["style.css"]

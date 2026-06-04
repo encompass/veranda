@@ -1,0 +1,6 @@
+# Grant the logged-in desktop user access to Elgato Stream Deck devices.
+# Install to /etc/udev/rules.d/ then reload:
+#   sudo cp data/60-veranda-streamdeck.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+# Unplug and replug the device afterwards.
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="0fd9", TAG+="uaccess"
