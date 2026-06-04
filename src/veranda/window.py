@@ -105,6 +105,11 @@ class VerandaWindow(Adw.ApplicationWindow):
         # Live "Special Buttons" refresh driver.
         self._live = LiveButtonController(self._repaint_live_key)
 
+        # Re-render keys when the system switches light/dark (theme default color).
+        self._theme_handler = Adw.StyleManager.get_default().connect(
+            "notify::dark", self._on_theme_changed
+        )
+
         self._deck_manager.start()
         if self._config.settings.run_in_background:
             self._enable_background()
@@ -529,6 +534,12 @@ class VerandaWindow(Adw.ApplicationWindow):
 
     # -- screensaver / lock sync -----------------------------------------
 
+    def _on_theme_changed(self, *_a) -> None:
+        from veranda import render
+
+        render.invalidate_theme_cache()
+        self._refresh()
+
     def _on_screensaver_changed(self, active: bool) -> None:
         self._screensaver_active = active
         for serial in self._deck_manager.serials():
@@ -876,6 +887,9 @@ class VerandaWindow(Adw.ApplicationWindow):
             return
         self._shutdown_done = True
         self._config.save()
+        if self._theme_handler:
+            Adw.StyleManager.get_default().disconnect(self._theme_handler)
+            self._theme_handler = 0
         self._live.stop()
         self._screensaver.stop()
         self._tray.stop()

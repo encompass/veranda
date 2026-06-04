@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import io
 import logging
+import warnings
 from functools import lru_cache
 
 import gi
@@ -20,19 +21,70 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 gi.require_version("Gsk", "4.0")
 gi.require_version("Graphene", "1.0")
-from gi.repository import Gdk, GLib, Gio, Graphene, Gsk, Gtk  # noqa: E402
+gi.require_version("Adw", "1")
+from gi.repository import Adw, Gdk, GLib, Gio, Graphene, Gsk, Gtk  # noqa: E402
 
 from veranda.models import ButtonConfig  # noqa: E402
 
 log = logging.getLogger(__name__)
 
-BACKGROUND = (28, 28, 30)
-FOREGROUND = "white"
-ICON_COLOR = (240, 240, 240)
+FALLBACK_BG = (28, 28, 30)
 BADGE_BG = (224, 64, 64)
 BADGE_FG = "white"
 PREVIEW_SIZE = 96
 RASTER_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp")
+
+_THEME_BG: tuple[int, int, int] | None = None
+
+
+def _extract_theme_bg() -> tuple[int, int, int]:
+    """Read the GNOME theme's view background color (light/dark aware)."""
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            ok, rgba = Gtk.Box().get_style_context().lookup_color("view_bg_color")
+        if ok:
+            return (round(rgba.red * 255), round(rgba.green * 255), round(rgba.blue * 255))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        if Adw.StyleManager.get_default().get_dark():
+            return (29, 29, 32)
+        return (250, 250, 250)
+    except Exception:  # noqa: BLE001
+        return FALLBACK_BG
+
+
+def theme_background() -> tuple[int, int, int]:
+    global _THEME_BG
+    if _THEME_BG is None:
+        _THEME_BG = _extract_theme_bg()
+    return _THEME_BG
+
+
+def invalidate_theme_cache() -> None:
+    """Drop the cached theme color + recolored icons (call on theme change)."""
+    global _THEME_BG
+    _THEME_BG = None
+    _rasterize_named.cache_clear()
+
+
+def _parse_hex(value: str) -> tuple[int, int, int] | None:
+    if not value:
+        return None
+    s = value.lstrip("#")
+    if len(s) == 6:
+        try:
+            return (int(s[0:2], 16), int(s[2:4], 16), int(s[4:6], 16))
+        except ValueError:
+            return None
+    return None
+
+
+def _contrast(bg: tuple[int, int, int]) -> tuple[int, int, int]:
+    """A readable foreground (near-black on light, near-white on dark)."""
+    luminance = 0.2126 * bg[0] + 0.7152 * bg[1] + 0.0722 * bg[2]
+    return (24, 24, 24) if luminance > 140 else (240, 240, 240)
 
 
 @lru_cache(maxsize=16)
@@ -68,24 +120,21 @@ def _is_symbolic(icon: str) -> bool:
     return icon.endswith("-symbolic") or icon.endswith("-symbolic.svg")
 
 
-def _paintable_to_pil(paintable, icon: str, size: int) -> Image.Image | None:
+def _paintable_to_pil(paintable, icon: str, size: int, color) -> Image.Image | None:
     snapshot = Gtk.Snapshot.new()
     if _is_symbolic(icon) and hasattr(paintable, "snapshot_symbolic"):
-        color = Gdk.RGBA()
-        color.red, color.green, color.blue, color.alpha = (
-            ICON_COLOR[0] / 255,
-            ICON_COLOR[1] / 255,
-            ICON_COLOR[2] / 255,
-            1.0,
+        rgba = Gdk.RGBA()
+        rgba.red, rgba.green, rgba.blue, rgba.alpha = (
+            color[0] / 255, color[1] / 255, color[2] / 255, 1.0,
         )
-        paintable.snapshot_symbolic(snapshot, size, size, [color])
+        paintable.snapshot_symbolic(snapshot, size, size, [rgba])
     else:
         paintable.snapshot(snapshot, size, size)
     return _node_to_pil(snapshot.to_node(), size)
 
 
-@lru_cache(maxsize=128)
-def _rasterize_named(icon: str, size: int) -> Image.Image | None:
+@lru_cache(maxsize=256)
+def _rasterize_named(icon: str, size: int, color) -> Image.Image | None:
     theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
     if not theme.has_icon(icon):
         return None  # avoid rendering the "missing image" fallback glyph
@@ -95,7 +144,7 @@ def _rasterize_named(icon: str, size: int) -> Image.Image | None:
     if paintable is None:
         return None
     try:
-        return _paintable_to_pil(paintable, icon, size)
+        return _paintable_to_pil(paintable, icon, size, color)
     except Exception as exc:  # noqa: BLE001
         log.debug("named icon render failed for %s: %s", icon, exc)
         return None
@@ -106,7 +155,7 @@ def _rasterize_file(path: str, size: int) -> Image.Image | None:
     if lower.endswith(".svg"):
         try:
             paintable = Gtk.IconPaintable.new_for_file(Gio.File.new_for_path(path), size, 1)
-            return _paintable_to_pil(paintable, path, size)
+            return _paintable_to_pil(paintable, path, size, (240, 240, 240))
         except Exception as exc:  # noqa: BLE001
             log.debug("svg render failed for %s: %s", path, exc)
             return None
@@ -120,13 +169,13 @@ def _rasterize_file(path: str, size: int) -> Image.Image | None:
         return None
 
 
-def rasterize_icon(icon: str, size: int) -> Image.Image | None:
-    """Render any icon spec (name, SVG path, or raster path) to an RGBA image."""
+def rasterize_icon(icon: str, size: int, color=(240, 240, 240)) -> Image.Image | None:
+    """Render any icon spec to an RGBA image; ``color`` recolors symbolic icons."""
     if not icon:
         return None
     if "/" in icon or icon.lower().endswith(RASTER_EXTS) or icon.lower().endswith(".svg"):
         return _rasterize_file(icon, size)
-    return _rasterize_named(icon, size)
+    return _rasterize_named(icon, size, tuple(color))
 
 
 def _draw_badge(image: Image.Image, text: str) -> None:
@@ -148,7 +197,9 @@ def _draw_badge(image: Image.Image, text: str) -> None:
 def _compose(size: tuple[int, int], button: ButtonConfig) -> Image.Image:
     """Build an RGB key image: optional icon + a text label (+ live badge)."""
     width, height = size
-    image = Image.new("RGB", size, BACKGROUND)
+    bg = _parse_hex(button.background) or theme_background()
+    fg = _contrast(bg)
+    image = Image.new("RGB", size, bg)
 
     # A "Special Button" (DYNAMIC action) can override icon/label and add a badge.
     icon_spec = button.icon
@@ -168,7 +219,7 @@ def _compose(size: tuple[int, int], button: ButtonConfig) -> Image.Image:
     if icon_spec:
         avail_h = height - label_band
         target = max(8, int(min(width, avail_h) * 0.80))
-        icon = rasterize_icon(icon_spec, target)
+        icon = rasterize_icon(icon_spec, target, fg)
         if icon is not None:
             x = (width - icon.width) // 2
             y = (avail_h - icon.height) // 2
@@ -184,7 +235,7 @@ def _compose(size: tuple[int, int], button: ButtonConfig) -> Image.Image:
         else:
             baseline = height // 2
             anchor = "mm"
-        draw.text((width / 2, baseline), label, font=font, anchor=anchor, fill=FOREGROUND)
+        draw.text((width / 2, baseline), label, font=font, anchor=anchor, fill=fg)
 
     if badge:
         _draw_badge(image, badge)
@@ -201,7 +252,7 @@ def render_native(deck, button: ButtonConfig) -> bytes:
 
 def blank_native(deck) -> bytes:
     size = deck.key_image_format()["size"]
-    return PILHelper.to_native_key_format(deck, Image.new("RGB", size, BACKGROUND))
+    return PILHelper.to_native_key_format(deck, Image.new("RGB", size, theme_background()))
 
 
 def _round_corners(image: Image.Image, radius: int) -> Image.Image:

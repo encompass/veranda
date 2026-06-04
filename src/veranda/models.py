@@ -85,11 +85,17 @@ class ButtonConfig:
     label: str = ""
     icon: str = ""  # absolute file path, or a symbolic icon name
     font_size: int = 14
+    background: str = ""  # "#rrggbb"; empty = theme default
     action: Action | None = None
 
     @property
     def is_empty(self) -> bool:
-        return self.action is None and not self.label and not self.icon
+        return (
+            self.action is None
+            and not self.label
+            and not self.icon
+            and not self.background
+        )
 
     def to_dict(self) -> dict[str, Any]:
         data: dict[str, Any] = {
@@ -97,6 +103,8 @@ class ButtonConfig:
             "icon": self.icon,
             "font_size": self.font_size,
         }
+        if self.background:
+            data["background"] = self.background
         if self.action is not None:
             data["action"] = self.action.to_dict()
         return data
@@ -107,6 +115,7 @@ class ButtonConfig:
             label=data.get("label", ""),
             icon=data.get("icon", ""),
             font_size=int(data.get("font_size", 14)),
+            background=data.get("background", ""),
             action=action_from_dict(data.get("action")),
         )
 

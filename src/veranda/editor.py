@@ -83,6 +83,22 @@ class ButtonEditor(Adw.Dialog):
         )
         font_row.connect("notify::value", self._on_font_changed)
         appearance.add(font_row)
+
+        bg_row = Adw.ActionRow(title="Background", subtitle="Key color")
+        self._color_btn = Gtk.ColorDialogButton(
+            dialog=Gtk.ColorDialog(), valign=Gtk.Align.CENTER
+        )
+        self._sync_color_button()
+        self._color_btn.connect("notify::rgba", self._on_color_changed)
+        bg_row.add_suffix(self._color_btn)
+        reset = Gtk.Button(
+            icon_name="edit-clear-symbolic", valign=Gtk.Align.CENTER,
+            tooltip_text="Use the theme default",
+        )
+        reset.add_css_class("flat")
+        reset.connect("clicked", self._on_color_reset)
+        bg_row.add_suffix(reset)
+        appearance.add(bg_row)
         page.add(appearance)
 
         # -- action -------------------------------------------------------
@@ -204,6 +220,36 @@ class ButtonEditor(Adw.Dialog):
 
     def _on_font_changed(self, row, _pspec) -> None:
         self._button.font_size = int(row.get_value())
+        self._notify()
+
+    # -- background color -------------------------------------------------
+
+    def _sync_color_button(self) -> None:
+        from gi.repository import Gdk
+
+        from veranda import render
+
+        rgb = render._parse_hex(self._button.background) or render.theme_background()
+        rgba = Gdk.RGBA()
+        rgba.red, rgba.green, rgba.blue, rgba.alpha = (
+            rgb[0] / 255, rgb[1] / 255, rgb[2] / 255, 1.0,
+        )
+        self._setting_color = True
+        self._color_btn.set_rgba(rgba)
+        self._setting_color = False
+
+    def _on_color_changed(self, *_a) -> None:
+        if getattr(self, "_setting_color", False):
+            return
+        rgba = self._color_btn.get_rgba()
+        self._button.background = "#%02x%02x%02x" % (
+            round(rgba.red * 255), round(rgba.green * 255), round(rgba.blue * 255),
+        )
+        self._notify()
+
+    def _on_color_reset(self, _btn) -> None:
+        self._button.background = ""  # back to the theme default
+        self._sync_color_button()
         self._notify()
 
     def _on_remove_clicked(self, _btn) -> None:
