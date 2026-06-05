@@ -260,6 +260,15 @@ class VerandaWindow(Adw.ApplicationWindow):
         apply_btn.connect("clicked", do_apply)
         dialog.present(self)
 
+    # -- D-Bus surface for the Shell extension (always-on-top / position) --
+
+    def virtual_window_geometry(self):
+        """List of (title, x, y, on_top) for the extension to place/raise."""
+        return self._virtual.window_geometry()
+
+    def report_virtual_window_moved(self, title: str, x: int, y: int) -> None:
+        self._virtual.report_moved(title, x, y)
+
     def _show_shortcuts(self) -> None:
         dialog = Adw.ShortcutsDialog()
 

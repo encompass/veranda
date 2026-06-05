@@ -83,6 +83,35 @@ def test_remove_virtual_deck():
     assert dm.info("virtual-1") is None
 
 
+def test_manager_geometry_and_report_moved():
+    from veranda.config import AppConfig
+    from veranda.virtualdeck import VirtualDeckManager
+
+    cfg = AppConfig(decks={"virtual-1": DeckState(
+        serial="virtual-1", virtual=True, grid_rows=1, grid_cols=1, name="V",
+        window={"x": 10, "y": 20, "on_top": True})})
+    mgr = VirtualDeckManager(None, None, cfg, refresh=lambda: None,
+                             open_settings=lambda s: None, windows_changed=lambda: None)
+
+    title = "Veranda Virtual Deck — V"
+
+    class FakeWin:
+        def get_title(self):
+            return title
+
+    class FakeDeck:
+        window = FakeWin()
+
+    mgr._decks["virtual-1"] = FakeDeck()
+
+    assert mgr.window_geometry() == [(title, 10, 20, True)]
+
+    mgr.report_moved(title, 50, 60)
+    assert cfg.decks["virtual-1"].window["x"] == 50
+    assert cfg.decks["virtual-1"].window["y"] == 60
+    assert cfg.decks["virtual-1"].window["on_top"] is True  # preserved
+
+
 def test_press_dispatches_through_manager():
     presses = []
     dm = DeckManager(on_key_press=lambda s, k: presses.append((s, k)),
