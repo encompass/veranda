@@ -10,11 +10,11 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 Cross-app actions that *do something* with an app, not just launch it.
 
-- [ ] **Media Control** — play/pause · next · previous · stop, targeting the
-      active MPRIS player (or a chosen one). One key per command, or a single
-      play/pause toggle. Pairs with the existing **Now Playing** Special Button.
-      Players that expose MPRIS: `gnome-music`, `gnome-podcasts`, `shortwave`,
-      `totem`, `showtime`.
+- [x] **Media Control** — play/pause · play · pause · next · previous · stop,
+      targeting the active MPRIS player (prefers one that is Playing). One key
+      per command; the tile icon tracks the command. Pairs with the **Now
+      Playing** Special Button. Works with `gnome-music`, `gnome-podcasts`,
+      `shortwave`, `totem`, `showtime` (any MPRIS player).
 - [ ] **Open Settings Panel** — open `gnome-control-center` to a specific panel
       (wifi · bluetooth · power · sound · display · network · keyboard · …) with
       a dropdown in the editor. (`gnome-control-center <panel>`.)

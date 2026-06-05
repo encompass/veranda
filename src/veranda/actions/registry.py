@@ -12,6 +12,7 @@ from veranda.actions.deck_control import (
 )
 from veranda.actions.gnome_shortcut import GnomeShortcutAction
 from veranda.actions.hotkey import HotkeyAction
+from veranda.actions.media_control import MediaControlAction
 from veranda.actions.multi import DelayAction, MultiAction
 from veranda.actions.open_app import OpenAppAction
 from veranda.actions.open_url import OpenUrlAction
@@ -46,6 +47,8 @@ ACTION_CATALOG: list[type[Action]] = [
     SwitchPageAction,
     SwitchProfileAction,
     BrightnessAction,
+    # App Control
+    MediaControlAction,
     # Special Buttons (live widgets)
     ClockWidget,
     DateWidget,
