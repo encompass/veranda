@@ -10,7 +10,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gio, GLib, GObject, Gtk  # noqa: E402
+from gi.repository import Adw, Gio, GLib, Gtk  # noqa: E402
 
 from veranda import APP_ID, __version__
 from veranda.config import AppConfig, config_dir
@@ -282,14 +282,6 @@ class VerandaWindow(Adw.ApplicationWindow):
         menu_btn = Gtk.MenuButton(icon_name="open-menu-symbolic", tooltip_text="Main menu")
         menu_btn.set_menu_model(self._build_menu())
         header.pack_end(menu_btn)
-
-        toggle = Gtk.ToggleButton(icon_name="sidebar-show-right-symbolic", active=True)
-        toggle.set_tooltip_text("Toggle the action library")
-        self._split.bind_property(
-            "show-sidebar", toggle, "active",
-            GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.BIDIRECTIONAL,
-        )
-        header.pack_end(toggle)
 
         toolbar.add_top_bar(header)
 

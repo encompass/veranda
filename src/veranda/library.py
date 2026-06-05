@@ -27,17 +27,21 @@ class ActionLibrary(Gtk.ScrolledWindow):
 
         box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=18,
+            spacing=12,
             margin_top=12,
             margin_bottom=12,
             margin_start=12,
             margin_end=12,
         )
+        # Each category is a collapsible section (starts expanded).
+        group = Adw.PreferencesGroup()
         for category, action_classes in iter_categories():
-            group = Adw.PreferencesGroup(title=category)
+            expander = Adw.ExpanderRow(title=category)
+            expander.set_expanded(True)
             for action_class in action_classes:
-                group.add(self._make_row(action_class))
-            box.append(group)
+                expander.add_row(self._make_row(action_class))
+            group.add(expander)
+        box.append(group)
         self.set_child(box)
 
     def _make_preview(self, action_class: type[Action]) -> Gtk.Picture:
