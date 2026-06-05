@@ -74,6 +74,10 @@ class WeatherWidget(LiveWidget):
     ICON = "weather-clear-symbolic"
     REFRESH_INTERVAL = 1800
     MIN_INTERVAL = 300
+    EDIT_LABEL = False  # the temperature is drawn by the widget
+
+    def default_label(self) -> str:
+        return ""
 
     def __init__(self, params: dict | None = None) -> None:
         super().__init__(params)
