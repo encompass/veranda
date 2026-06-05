@@ -70,6 +70,11 @@ class Action:
     CATEGORY: str = "General"
     #: True for "Special Buttons" whose displayed image updates over time.
     DYNAMIC: bool = False
+    #: When False, the editor hides the Label and Font size rows (the action
+    #: draws its own text, so a static label would do nothing).
+    EDIT_LABEL: bool = True
+    #: When False, the editor hides the Icon row (the action supplies its own).
+    EDIT_ICON: bool = True
 
     def __init__(self, params: dict[str, Any] | None = None) -> None:
         self.params: dict[str, Any] = dict(params or {})
@@ -86,6 +91,14 @@ class Action:
 
     def badge_text(self) -> str | None:
         """Small corner-badge text, e.g. an unread count (None → no badge)."""
+        return None
+
+    def overlay_text(self) -> str | None:
+        """Large text drawn centered *over* a full-bleed icon (None → none).
+
+        Use this for "number on an icon" looks (e.g. the day of the month on a
+        calendar). Unlike :meth:`display_text` (a bottom label), this sits on
+        top of the icon, which is drawn as large as possible."""
         return None
 
     # -- presentation -----------------------------------------------------

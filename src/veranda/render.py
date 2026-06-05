@@ -266,6 +266,7 @@ def _compose(size: tuple[int, int], button: ButtonConfig) -> Image.Image:
     icon_spec = button.icon
     label = button.label
     badge = None
+    overlay = None
     action = button.action
     if action is not None and getattr(action, "DYNAMIC", False):
         icon_spec = action.display_icon() or button.icon
@@ -273,16 +274,23 @@ def _compose(size: tuple[int, int], button: ButtonConfig) -> Image.Image:
         if text is not None:
             label = text
         badge = action.badge_text()
+        overlay = action.overlay_text()
 
-    has_label = bool(label)
+    # An overlay (e.g. the day number on a calendar) takes over: the icon goes
+    # full-bleed and the bottom label is suppressed.
+    has_label = bool(label) and overlay is None
     label_band = int(height * 0.30) if has_label else 0
 
     animated = _gif_frame_at(icon_spec, size, time.monotonic()) if icon_spec else None
     if animated is not None:
         image.paste(animated, (0, 0), animated)  # full-bleed animation
     elif icon_spec:
-        avail_h = height - label_band
-        target = max(8, int(min(width, avail_h) * 0.80))
+        if overlay is not None:
+            avail_h = height
+            target = max(8, int(min(width, height) * 0.92))  # as big as it fits
+        else:
+            avail_h = height - label_band
+            target = max(8, int(min(width, avail_h) * 0.80))
         icon = rasterize_icon(icon_spec, target, fg)
         if icon is not None:
             x = (width - icon.width) // 2
@@ -300,6 +308,17 @@ def _compose(size: tuple[int, int], button: ButtonConfig) -> Image.Image:
             baseline = height // 2
             anchor = "mm"
         draw.text((width / 2, baseline), label, font=font, anchor=anchor, fill=fg)
+
+    if overlay is not None:
+        draw = ImageDraw.Draw(image)
+        font = _font(max(10, int(height * 0.40)))
+        stroke = max(1, int(height * 0.025))
+        # Sit just below center so it lands in the calendar body, outlined in the
+        # background colour so it stays legible over the icon's lines.
+        draw.text(
+            (width / 2, height * 0.56), overlay, font=font, anchor="mm",
+            fill=fg, stroke_width=stroke, stroke_fill=bg,
+        )
 
     if badge:
         _draw_badge(image, badge)

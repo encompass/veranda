@@ -48,37 +48,23 @@ class ClockWidget(LiveWidget):
 class DateWidget(LiveWidget):
     TYPE_ID = "date"
     NAME = "Date"
-    DESCRIPTION = "Today's date; opens GNOME Calendar"
+    DESCRIPTION = "Today's date on a calendar; opens GNOME Calendar"
     ICON = "x-office-calendar-symbolic"
     REFRESH_INTERVAL = 60
+    EDIT_LABEL = False  # the day number is drawn over the icon
+    EDIT_ICON = False   # the calendar icon is fixed
 
-    @property
-    def _mode(self) -> str:
-        return self.params.get("mode", "day")  # "day" | "weekday"
+    def display_icon(self) -> str:
+        return self.ICON
 
-    def display_text(self) -> str:
-        now = datetime.now()
-        return now.strftime("%a") if self._mode == "weekday" else str(now.day)
+    def overlay_text(self) -> str:
+        return str(datetime.now().day)
 
     def summary(self) -> str:
-        return "Weekday" if self._mode == "weekday" else "Day of month"
+        return "Today's date"
 
     def build_editor_rows(self, button, on_change: Callable[[], None]):
-        from gi.repository import Adw, Gtk
-
-        row = Adw.ComboRow(title="Show")
-        labels = Gtk.StringList()
-        for text in ("Day of month", "Weekday"):
-            labels.append(text)
-        row.set_model(labels)
-        row.set_selected(1 if self._mode == "weekday" else 0)
-
-        def changed(r, _p):
-            self.params["mode"] = "weekday" if r.get_selected() == 1 else "day"
-            on_change()
-
-        row.connect("notify::selected", changed)
-        return [row]
+        return []
 
     def execute(self, ctx: ActionContext) -> None:
         if not launch.open_app("org.gnome.Calendar"):

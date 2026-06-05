@@ -40,49 +40,60 @@ class ButtonEditor(Adw.Dialog):
 
         # -- appearance ---------------------------------------------------
         appearance = Adw.PreferencesGroup(title="Appearance")
+        action = button.action
+        edit_label = getattr(action, "EDIT_LABEL", True) if action else True
+        edit_icon = getattr(action, "EDIT_ICON", True) if action else True
 
-        self._label_row = Adw.EntryRow(title="Label")
-        self._label_row.set_text(button.label)
-        self._label_row.connect("changed", self._on_label_changed)
-        appearance.add(self._label_row)
+        self._label_row = None
+        self._icon_row = None
+        self._icon_preview = None
+        self._clear = None
 
-        self._icon_row = Adw.ActionRow(title="Icon")
-        self._icon_preview = Gtk.Image()
-        self._icon_preview.set_pixel_size(32)
-        self._icon_row.add_prefix(self._icon_preview)
+        if edit_label:
+            self._label_row = Adw.EntryRow(title="Label")
+            self._label_row.set_text(button.label)
+            self._label_row.connect("changed", self._on_label_changed)
+            appearance.add(self._label_row)
 
-        browse = Gtk.Button(
-            icon_name="view-grid-symbolic", valign=Gtk.Align.CENTER,
-            tooltip_text="Browse icons",
-        )
-        browse.add_css_class("flat")
-        browse.connect("clicked", self._on_browse_icons)
-        upload = Gtk.Button(
-            icon_name="document-open-symbolic", valign=Gtk.Align.CENTER,
-            tooltip_text="Upload an image or SVG",
-        )
-        upload.add_css_class("flat")
-        upload.connect("clicked", self._on_upload)
-        self._clear = Gtk.Button(
-            icon_name="edit-clear-symbolic", valign=Gtk.Align.CENTER,
-            tooltip_text="Clear icon",
-        )
-        self._clear.add_css_class("flat")
-        self._clear.connect("clicked", self._on_clear_icon)
+        if edit_icon:
+            self._icon_row = Adw.ActionRow(title="Icon")
+            self._icon_preview = Gtk.Image()
+            self._icon_preview.set_pixel_size(32)
+            self._icon_row.add_prefix(self._icon_preview)
 
-        self._icon_row.add_suffix(browse)
-        self._icon_row.add_suffix(upload)
-        self._icon_row.add_suffix(self._clear)
-        appearance.add(self._icon_row)
+            browse = Gtk.Button(
+                icon_name="view-grid-symbolic", valign=Gtk.Align.CENTER,
+                tooltip_text="Browse icons",
+            )
+            browse.add_css_class("flat")
+            browse.connect("clicked", self._on_browse_icons)
+            upload = Gtk.Button(
+                icon_name="document-open-symbolic", valign=Gtk.Align.CENTER,
+                tooltip_text="Upload an image or SVG",
+            )
+            upload.add_css_class("flat")
+            upload.connect("clicked", self._on_upload)
+            self._clear = Gtk.Button(
+                icon_name="edit-clear-symbolic", valign=Gtk.Align.CENTER,
+                tooltip_text="Clear icon",
+            )
+            self._clear.add_css_class("flat")
+            self._clear.connect("clicked", self._on_clear_icon)
 
-        font_row = Adw.SpinRow(
-            title="Font size",
-            adjustment=Gtk.Adjustment(
-                lower=6, upper=48, step_increment=1, value=button.font_size
-            ),
-        )
-        font_row.connect("notify::value", self._on_font_changed)
-        appearance.add(font_row)
+            self._icon_row.add_suffix(browse)
+            self._icon_row.add_suffix(upload)
+            self._icon_row.add_suffix(self._clear)
+            appearance.add(self._icon_row)
+
+        if edit_label:
+            font_row = Adw.SpinRow(
+                title="Font size",
+                adjustment=Gtk.Adjustment(
+                    lower=6, upper=48, step_increment=1, value=button.font_size
+                ),
+            )
+            font_row.connect("notify::value", self._on_font_changed)
+            appearance.add(font_row)
 
         self._bg_row = Adw.ActionRow(title="Background")
         self._color_btn = Gtk.ColorDialogButton(
@@ -110,12 +121,14 @@ class ButtonEditor(Adw.Dialog):
 
         # -- action -------------------------------------------------------
         if button.action is not None:
-            action_group = Adw.PreferencesGroup(
-                title="Action", description=button.action.NAME
-            )
-            for row in button.action.build_editor_rows(self._button, self._on_action_change):
-                action_group.add(row)
-            page.add(action_group)
+            rows = button.action.build_editor_rows(self._button, self._on_action_change)
+            if rows:
+                action_group = Adw.PreferencesGroup(
+                    title="Action", description=button.action.NAME
+                )
+                for row in rows:
+                    action_group.add(row)
+                page.add(action_group)
 
             # Live widgets that poll expose an adjustable refresh interval.
             action = button.action
@@ -139,6 +152,8 @@ class ButtonEditor(Adw.Dialog):
     # -- icon -------------------------------------------------------------
 
     def _update_icon_preview(self) -> None:
+        if self._icon_row is None:
+            return
         icon = self._button.icon
         if icon and "/" in icon:
             self._icon_preview.set_from_file(icon)
@@ -214,7 +229,7 @@ class ButtonEditor(Adw.Dialog):
 
     def _sync_appearance(self) -> None:
         self._syncing = True
-        if self._label_row.get_text() != self._button.label:
+        if self._label_row is not None and self._label_row.get_text() != self._button.label:
             self._label_row.set_text(self._button.label)
         self._update_icon_preview()
         self._syncing = False
