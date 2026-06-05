@@ -227,13 +227,10 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._split.set_content(self._build_content_pane())
         self._split.set_sidebar(self._build_sidebar_pane())
 
-        # Collapse the sidebar before the expanded layout would overflow. The
-        # threshold is recomputed per device (a bigger grid needs more width).
-        self._breakpoint = Adw.Breakpoint.new(
-            Adw.BreakpointCondition.parse("max-width: 1000px")
-        )
-        self._breakpoint.add_setter(self._split, "collapsed", True)
-        self.add_breakpoint(self._breakpoint)
+        # The action library stays beside the grid and never collapses into an
+        # overlay — overlaying the grid would hide the drop targets and break
+        # drag-and-drop. Instead the window enforces a minimum width that fits
+        # both panes (see _update_min_width, recomputed per device).
 
     def _build_content_pane(self) -> Adw.ToolbarView:
         toolbar = Adw.ToolbarView()
@@ -387,21 +384,20 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._deck_manager.apply_page(serial, page)
         self._live.rebuild(page)
         self._dbus.notify_changed()
-        self._update_breakpoint()
+        self._update_min_width()
         return False
 
-    def _update_breakpoint(self) -> None:
-        """Collapse the sidebar below the current expanded-layout width."""
+    def _update_min_width(self) -> None:
+        """Keep the window wide enough to show the grid and library side by
+        side, so the library never has to overlay the grid (which would hide
+        the drop targets and break drag-and-drop)."""
         content = self._split.get_content()
         sidebar = self._split.get_sidebar()
         if content is None or sidebar is None:
             return
         cmin = content.measure(Gtk.Orientation.HORIZONTAL, -1)[0]
         smin = sidebar.measure(Gtk.Orientation.HORIZONTAL, -1)[0]
-        threshold = cmin + smin + 120  # covers the split handle/spacing + margin
-        self._breakpoint.set_condition(
-            Adw.BreakpointCondition.parse(f"max-width: {threshold}px")
-        )
+        self.set_size_request(cmin + smin + 120, -1)  # split handle + margin
 
     def _repaint_live_key(self, key: int) -> None:
         """Repaint one live (Special Button) key on the GUI and hardware."""
