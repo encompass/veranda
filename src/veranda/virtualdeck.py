@@ -344,12 +344,17 @@ class VirtualDeckManager:
 
     def sync_live(self, current_serial: str | None) -> None:
         """Drive each non-current virtual deck's live buttons; pause the current
-        one (the window's own controller handles it)."""
+        one (the window's own controller handles it).
+
+        Must run after the window's own controller has been stopped: it stops
+        *every* per-deck controller first, then re-arms only the non-current
+        ones, so a shared widget action is never subscribed twice.
+        """
+        for ctrl in self._live.values():
+            ctrl.stop()
         for serial, ctrl in self._live.items():
             state = self._config.decks.get(serial)
-            if serial == current_serial or state is None:
-                ctrl.stop()
-            else:
+            if serial != current_serial and state is not None:
                 ctrl.rebuild(state.current_page())
 
     def _repaint_cb(self, serial: str) -> Callable[[int], None]:

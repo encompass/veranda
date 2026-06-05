@@ -461,8 +461,15 @@ class VerandaWindow(Adw.ApplicationWindow):
 
         self._apply_brightness(serial)
         self._deck_manager.apply_page(serial, page)
-        self._live.rebuild(page)
+        # Rebuild live-widget subscriptions in a strict teardown→rebuild order so
+        # a widget action shared by a deck is never managed by two controllers at
+        # once (the window's controller for the current device + a per-virtual
+        # controller): tear self._live down first, let the virtual manager stop
+        # all its controllers and re-arm only the non-current ones, then
+        # subscribe the current device fresh.
+        self._live.stop()
         self._virtual.sync_live(serial)  # keep non-current virtual windows live
+        self._live.rebuild(page)
         self._dbus.notify_changed()
         self._update_min_width()
         return False
