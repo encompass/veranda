@@ -81,6 +81,8 @@ class VerandaWindow(Adw.ApplicationWindow):
         )
         self._current_serial: str | None = None
         self._device_serials: list[str] = []
+        self._device_names: list[str] = []
+        self._profile_names: list[str] = []
         self._updating_profiles = False
         self._updating_devices = False
         self._named_prompted: set[str] = set()
@@ -507,11 +509,18 @@ class VerandaWindow(Adw.ApplicationWindow):
     def _update_device_dropdown(self, current_serial: str) -> None:
         self._updating_devices = True
         serials = self._deck_manager.serials()
+        names = [self._config.deck(s).display_name for s in serials]
+        # Only swap the model when the device list actually changes. Replacing it
+        # from inside the dropdown's own selection handler (device switch →
+        # notify::selected → _refresh) frees the model GTK is mid-notify on and
+        # segfaults; a plain set_selected is reentrancy-safe.
+        if names != self._device_names:
+            model = Gtk.StringList()
+            for name in names:
+                model.append(name)
+            self._device_drop.set_model(model)
+            self._device_names = names
         self._device_serials = serials
-        model = Gtk.StringList()
-        for serial in serials:
-            model.append(self._config.deck(serial).display_name)
-        self._device_drop.set_model(model)
         if current_serial in serials:
             self._device_drop.set_selected(serials.index(current_serial))
         self._device_drop.set_visible(len(serials) > 0)
@@ -521,10 +530,13 @@ class VerandaWindow(Adw.ApplicationWindow):
 
     def _update_profile_dropdown(self, state: DeckState) -> None:
         self._updating_profiles = True
-        model = Gtk.StringList()
-        for profile in state.profiles:
-            model.append(profile.name)
-        self._profile_drop.set_model(model)
+        names = [profile.name for profile in state.profiles]
+        if names != self._profile_names:
+            model = Gtk.StringList()
+            for name in names:
+                model.append(name)
+            self._profile_drop.set_model(model)
+            self._profile_names = names
         self._profile_drop.set_selected(state.active_profile)
         self._updating_profiles = False
 
