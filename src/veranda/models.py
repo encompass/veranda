@@ -94,6 +94,18 @@ class TileMove(GObject.Object):
         self.source_key = source_key
 
 
+class PageMove(GObject.Object):
+    """Drag-and-drop payload for reordering pages in the page list."""
+
+    __gtype_name__ = "VerandaPageMove"
+
+    source_index = GObject.Property(type=int)
+
+    def __init__(self, source_index: int) -> None:
+        super().__init__()
+        self.source_index = source_index
+
+
 @dataclass
 class ButtonConfig:
     """Presentation + bound action for a single key on a page."""

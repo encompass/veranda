@@ -20,6 +20,7 @@ from veranda.editor import ButtonEditor
 from veranda.grid import DeckGrid
 from veranda.input_backend import shared_backend
 from veranda.library import ActionLibrary
+from veranda.pagespanel import PagesPanel
 from veranda.models import ActionItem, ButtonConfig, DeckState, Page, Profile
 from veranda.screensaver import ScreensaverMonitor
 from veranda.settings import SettingsDialog, prompt_text
@@ -215,25 +216,30 @@ class VerandaWindow(Adw.ApplicationWindow):
 
     def _build_ui(self) -> None:
         self._toasts = Adw.ToastOverlay()
+        # One full-width header spanning the whole window; below it the pages
+        # list, the key grid, and the action library sit side by side.
+        outer = Adw.ToolbarView()
+        outer.add_top_bar(self._build_header())
+
         self._split = Adw.OverlaySplitView(
             sidebar_position=Gtk.PackType.END,
             min_sidebar_width=300,
             max_sidebar_width=420,
             sidebar_width_fraction=0.34,
         )
-        self._toasts.set_child(self._split)
-        self.set_content(self._toasts)
+        self._split.set_content(self._build_main_pane())
+        self._split.set_sidebar(ActionLibrary())
+        outer.set_content(self._split)
 
-        self._split.set_content(self._build_content_pane())
-        self._split.set_sidebar(self._build_sidebar_pane())
+        self._toasts.set_child(outer)
+        self.set_content(self._toasts)
 
         # The action library stays beside the grid and never collapses into an
         # overlay — overlaying the grid would hide the drop targets and break
         # drag-and-drop. Instead the window enforces a minimum width that fits
         # both panes (see _update_min_width, recomputed per device).
 
-    def _build_content_pane(self) -> Adw.ToolbarView:
-        toolbar = Adw.ToolbarView()
+    def _build_header(self) -> Adw.HeaderBar:
         header = Adw.HeaderBar()
 
         # Device switcher (shows each deck's friendly name).
@@ -248,44 +254,26 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._profile_drop.connect("notify::selected", self._on_profile_selected)
         header.pack_start(self._profile_drop)
 
-        # Page navigation.
-        nav = Gtk.Box(spacing=0)
-        nav.add_css_class("linked")
-        self._prev_btn = Gtk.Button(icon_name="go-previous-symbolic", tooltip_text="Previous page")
-        self._prev_btn.connect("clicked", lambda _b: self._page_step(-1))
-        self._next_btn = Gtk.Button(icon_name="go-next-symbolic", tooltip_text="Next page")
-        self._next_btn.connect("clicked", lambda _b: self._page_step(1))
-        nav.append(self._prev_btn)
-        nav.append(self._next_btn)
-        header.pack_start(nav)
-
-        page_menu = Gio.Menu()
-        page_menu.append("Rename Page…", "win.rename-page")
-        move = Gio.Menu()
-        move.append("Move Left", "win.move-page-left")
-        move.append("Move Right", "win.move-page-right")
-        page_menu.append_section(None, move)
-        self._page_button = Gtk.MenuButton(menu_model=page_menu, tooltip_text="Page options")
-        self._page_button.add_css_class("flat")
-        header.pack_start(self._page_button)
-
-        add_page = Gtk.Button(icon_name="list-add-symbolic", tooltip_text="Add a page")
-        add_page.connect("clicked", lambda _b: self._add_page())
-        header.pack_start(add_page)
-        self._remove_page_btn = Gtk.Button(
-            icon_name="list-remove-symbolic", tooltip_text="Remove this page"
-        )
-        self._remove_page_btn.connect("clicked", lambda _b: self._remove_page())
-        header.pack_start(self._remove_page_btn)
-
-        # End: menu + sidebar toggle.
+        # Main menu (page management now lives in the left Pages panel).
         menu_btn = Gtk.MenuButton(icon_name="open-menu-symbolic", tooltip_text="Main menu")
         menu_btn.set_menu_model(self._build_menu())
         header.pack_end(menu_btn)
+        return header
 
-        toolbar.add_top_bar(header)
+    def _build_main_pane(self) -> Gtk.Widget:
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
 
-        self._body = Gtk.Stack()
+        self._pages_panel = PagesPanel(
+            on_select=self._on_page_selected,
+            on_reorder=self._reorder_pages,
+            on_add=self._add_page,
+            on_rename=self._rename_page_at,
+            on_remove=self._remove_page_at,
+        )
+        box.append(self._pages_panel)
+        box.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
+
+        self._body = Gtk.Stack(hexpand=True, vexpand=True)
         self._grid = DeckGrid(
             self._on_drop, self._on_select, self._on_move, self._on_file_drop,
             self._remove_button, self._on_tile_command, self._can_paste,
@@ -297,18 +285,8 @@ class VerandaWindow(Adw.ApplicationWindow):
 
         self._status = Adw.StatusPage(icon_name="input-tablet-symbolic")
         self._body.add_named(self._status, "status")
-        toolbar.set_content(self._body)
-        return toolbar
-
-    def _build_sidebar_pane(self) -> Adw.ToolbarView:
-        toolbar = Adw.ToolbarView()
-        header = Adw.HeaderBar()
-        header.set_title_widget(
-            Adw.WindowTitle(title="Actions", subtitle="Drag onto a button")
-        )
-        toolbar.add_top_bar(header)
-        toolbar.set_content(ActionLibrary())
-        return toolbar
+        box.append(self._body)
+        return box
 
     # -- queries for settings ---------------------------------------------
 
@@ -363,11 +341,7 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._update_device_dropdown(serial)
         self._update_profile_dropdown(state)
 
-        npages = len(profile.pages)
-        self._page_button.set_label(f"{page.name}  ({profile.active_page + 1}/{npages})")
-        self._prev_btn.set_sensitive(profile.active_page > 0)
-        self._next_btn.set_sensitive(profile.active_page < npages - 1)
-        self._remove_page_btn.set_sensitive(npages > 1)
+        self._pages_panel.update([p.name for p in profile.pages], profile.active_page)
 
         self._grid.build(info, page)
         self._body.set_visible_child_name("grid")
@@ -406,10 +380,7 @@ class VerandaWindow(Adw.ApplicationWindow):
             self._deck_manager.update_button(serial, key, button)
 
     def _set_controls_sensitive(self, sensitive: bool) -> None:
-        for widget in (
-            self._device_drop, self._profile_drop, self._page_button,
-            self._prev_btn, self._next_btn, self._remove_page_btn,
-        ):
+        for widget in (self._device_drop, self._profile_drop, self._pages_panel):
             widget.set_sensitive(sensitive)
 
     def _update_device_dropdown(self, current_serial: str) -> None:
@@ -931,6 +902,50 @@ class VerandaWindow(Adw.ApplicationWindow):
         profile.move_page(profile.active_page, dst)
         self._config.save()
         self._refresh()
+
+    # -- pages panel callbacks (operate on a specific page index) ---------
+
+    def _on_page_selected(self, index: int) -> None:
+        if self._current_serial is not None:
+            self._switch_page(self._current_serial, index)
+
+    def _reorder_pages(self, src: int, dst: int) -> None:
+        if self._current_serial is None:
+            return
+        profile = self._config.deck(self._current_serial).current_profile()
+        n = len(profile.pages)
+        if src == dst or not (0 <= src < n) or not (0 <= dst < n):
+            return
+        self._record_undo()
+        profile.move_page(src, dst)
+        self._config.save()
+        self._refresh()
+
+    def _rename_page_at(self, index: int) -> None:
+        if self._current_serial is None:
+            return
+        profile = self._config.deck(self._current_serial).current_profile()
+        if not (0 <= index < len(profile.pages)):
+            return
+        page = profile.pages[index]
+
+        def apply(name: str) -> None:
+            self._record_undo()
+            page.name = name
+            self._config.save()
+            self._refresh()
+
+        prompt_text(self, "Rename page", page.name, apply)
+
+    def _remove_page_at(self, index: int) -> None:
+        if self._current_serial is None:
+            return
+        profile = self._config.deck(self._current_serial).current_profile()
+        if not (0 <= index < len(profile.pages)):
+            return
+        if index != profile.active_page:
+            self._switch_page(self._current_serial, index)
+        self._remove_page()
 
     def _add_page(self) -> None:
         if self._current_serial is None:
