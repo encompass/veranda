@@ -978,6 +978,10 @@ class VerandaWindow(Adw.ApplicationWindow):
             serial = self._device_serials[idx]
             if serial != self._current_serial:
                 self._current_serial = serial
+                # Picking a virtual deck reveals its (possibly hidden) window.
+                state = self._config.decks.get(serial)
+                if state is not None and state.virtual and not state.window.get("visible", True):
+                    self._virtual.set_visible(serial, True)
                 self._refresh()
 
     def _unique_default_name(self, base: str, exclude: str) -> str:

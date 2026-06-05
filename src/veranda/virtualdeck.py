@@ -203,8 +203,8 @@ class VirtualDeckWindow(Gtk.ApplicationWindow):
     # -- chrome / menu ----------------------------------------------------
 
     def _on_close_request(self, _w) -> bool:
-        self._on_close()
-        return True  # the controller tears us down via deck.close()
+        self._on_hide()  # closing a virtual deck hides it; "Remove" deletes it
+        return True
 
     def _on_right_click(self, gesture, _n, x, y) -> None:
         popover = Gtk.Popover(has_arrow=False)
@@ -227,15 +227,15 @@ class VirtualDeckWindow(Gtk.ApplicationWindow):
         settings.connect("clicked", lambda _b: (popover.popdown(), self._on_settings()))
         box.append(settings)
 
-        hide = Gtk.Button(child=Gtk.Label(label="Hide", xalign=0.0))
+        hide = Gtk.Button(child=Gtk.Label(label="Close", xalign=0.0))
         hide.add_css_class("flat")
         hide.connect("clicked", lambda _b: (popover.popdown(), self._on_hide()))
         box.append(hide)
 
-        close = Gtk.Button(child=Gtk.Label(label="Close", xalign=0.0))
-        close.add_css_class("flat")
-        close.connect("clicked", lambda _b: (popover.popdown(), self._on_close()))
-        box.append(close)
+        remove = Gtk.Button(child=Gtk.Label(label="Remove", xalign=0.0))
+        remove.add_css_class("flat")
+        remove.connect("clicked", lambda _b: (popover.popdown(), self._on_close()))
+        box.append(remove)
 
         popover.set_child(box)
         popover.connect("closed", lambda p: p.unparent())
