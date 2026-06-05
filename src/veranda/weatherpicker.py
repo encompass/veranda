@@ -16,12 +16,13 @@ log = logging.getLogger(__name__)
 WEATHER_SCHEMA = "org.gnome.Weather"
 
 
-def saved_locations() -> list[tuple[str, float, float]]:
-    """Return ``(name, lat, lon)`` for each location saved in GNOME Weather.
+def saved_locations() -> list[tuple[str, float, float, str]]:
+    """Return ``(name, lat, lon, serialized)`` for each GNOME Weather location.
 
-    Reads ``org.gnome.Weather``'s ``locations`` GSettings key and deserializes
-    each entry with GWeather. Returns an empty list if GNOME Weather (its
-    schema) or GWeather is unavailable, so callers can degrade gracefully.
+    Reads ``org.gnome.Weather``'s ``locations`` GSettings key. ``serialized`` is
+    the GWeather location in parseable text form (exactly what GNOME Weather
+    stored), so the tile can fetch weather for the identical location. Returns
+    an empty list if GNOME Weather (its schema) or GWeather is unavailable.
     """
     source = Gio.SettingsSchemaSource.get_default()
     if source is None or source.lookup(WEATHER_SCHEMA, True) is None:
@@ -36,7 +37,7 @@ def saved_locations() -> list[tuple[str, float, float]]:
     if world is None:
         return []
     settings = Gio.Settings.new(WEATHER_SCHEMA)
-    out: list[tuple[str, float, float]] = []
+    out: list[tuple[str, float, float, str]] = []
     value = settings.get_value("locations")  # type 'av'
     for i in range(value.n_children()):
         try:
@@ -46,7 +47,7 @@ def saved_locations() -> list[tuple[str, float, float]]:
                 continue
             coords = loc.get_coords()  # (lat, lon) in degrees
             lat, lon = float(coords[-2]), float(coords[-1])
-            out.append((loc.get_name(), lat, lon))
+            out.append((loc.get_name(), lat, lon, inner.print_(True)))
         except Exception:  # noqa: BLE001
             log.debug("could not parse a saved weather location", exc_info=True)
     return out
@@ -61,7 +62,7 @@ class WeatherLocationPicker(Adw.Dialog):
 
     def __init__(
         self,
-        on_pick: Callable[[str, float, float], None],
+        on_pick: Callable[[str, float, float, str], None],
         on_open_weather: Callable[[], None],
     ) -> None:
         super().__init__()
@@ -80,7 +81,7 @@ class WeatherLocationPicker(Adw.Dialog):
         page.add(group)
 
         locations = saved_locations()
-        for name, lat, lon in locations:
+        for name, lat, lon, serialized in locations:
             row = Adw.ActionRow(
                 title=GLib.markup_escape_text(name),
                 subtitle=f"{lat:.2f}, {lon:.2f}",
@@ -89,7 +90,7 @@ class WeatherLocationPicker(Adw.Dialog):
             row.set_activatable(True)
             row.connect(
                 "activated",
-                lambda _r, n=name, la=lat, lo=lon: self._choose(n, la, lo),
+                lambda _r, n=name, la=lat, lo=lon, s=serialized: self._choose(n, la, lo, s),
             )
             group.add(row)
 
@@ -112,6 +113,6 @@ class WeatherLocationPicker(Adw.Dialog):
         toolbar.set_content(page)
         self.set_child(toolbar)
 
-    def _choose(self, name: str, lat: float, lon: float) -> None:
-        self._on_pick(name, lat, lon)
+    def _choose(self, name: str, lat: float, lon: float, serialized: str) -> None:
+        self._on_pick(name, lat, lon, serialized)
         self.close()

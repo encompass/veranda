@@ -82,7 +82,30 @@ class WeatherWidget(LiveWidget):
         self._icon: str | None = None
 
     def _has_location(self) -> bool:
-        return "lat" in self.params and "lon" in self.params
+        return "serialized" in self.params or (
+            "lat" in self.params and "lon" in self.params
+        )
+
+    def _build_location(self, GWeather):
+        """Reconstruct the GWeather location, preferring the exact one GNOME
+        Weather saved (with its station); fall back to detached lat/lon."""
+        serialized = self.params.get("serialized")
+        if serialized:
+            try:
+                variant = GLib.Variant.parse(None, serialized, None, None)
+                loc = GWeather.Location.deserialize(
+                    GWeather.Location.get_world(), variant
+                )
+                if loc is not None:
+                    return loc
+            except Exception:  # noqa: BLE001
+                log.debug("could not deserialize saved location", exc_info=True)
+        if "lat" in self.params and "lon" in self.params:
+            return GWeather.Location.new_detached(
+                self.params.get("name") or "Location", None,
+                float(self.params["lat"]), float(self.params["lon"]),
+            )
+        return None
 
     def refresh(self) -> None:
         if not self._has_location():
@@ -93,13 +116,21 @@ class WeatherWidget(LiveWidget):
             gi.require_version("GWeather", "4.0")
             from gi.repository import GWeather
 
-            loc = GWeather.Location.new_detached(
-                self.params.get("name") or "Location", None,
-                float(self.params["lat"]), float(self.params["lon"]),
-            )
+            loc = self._build_location(GWeather)
+            if loc is None:
+                self._emit_update()
+                return
             info = GWeather.Info()
             info.set_application_id("com.encompass.Veranda")
             info.set_contact_info("https://github.com/encompass/veranda")
+            # Without enabling providers GWeather fetches nothing. Use the
+            # global providers GNOME Weather relies on: MET_NO works anywhere
+            # from coordinates, METAR adds station observations where available.
+            # (Provider.ALL also pulls the US-only weather.gov, whose invalid
+            # responses elsewhere mask the good data.)
+            info.set_enabled_providers(
+                GWeather.Provider.METAR | GWeather.Provider.MET_NO
+            )
             info.set_location(loc)
             info.connect("updated", self._on_updated)
             self._info = info  # keep a ref while the async fetch runs
@@ -114,12 +145,16 @@ class WeatherWidget(LiveWidget):
             gi.require_version("GWeather", "4.0")
             from gi.repository import GWeather
 
-            ok, temp = info.get_value_temp(GWeather.TemperatureUnit.CENTIGRADE)
+            # DEFAULT uses the unit the user picked in GNOME (°C/°F), like
+            # GNOME Weather itself.
+            ok, temp = info.get_value_temp(GWeather.TemperatureUnit.DEFAULT)
             if ok:
                 self._temp = round(temp)
-            self._icon = info.get_symbolic_icon_name()
+            icon = info.get_symbolic_icon_name()
+            if icon:
+                self._icon = icon
         except Exception:  # noqa: BLE001
-            pass
+            log.debug("weather update parse failed", exc_info=True)
         self._emit_update()
 
     def display_icon(self) -> str:
@@ -144,11 +179,13 @@ class WeatherWidget(LiveWidget):
         )
         choose = Gtk.Button(label="Choose…", valign=Gtk.Align.CENTER)
 
-        def pick(name, lat, lon):
+        def pick(name, lat, lon, serialized):
             self.params["name"] = name
             self.params["lat"] = lat
             self.params["lon"] = lon
+            self.params["serialized"] = serialized
             self._temp = None  # force a fresh fetch for the new place
+            self._icon = None  # and a fresh condition icon
             row.set_subtitle(name)
             on_change()
 

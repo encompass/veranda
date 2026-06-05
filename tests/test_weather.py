@@ -11,9 +11,10 @@ def test_saved_locations_is_graceful():
     result = weatherpicker.saved_locations()
     assert isinstance(result, list)
     for item in result:
-        name, lat, lon = item
+        name, lat, lon, serialized = item
         assert isinstance(name, str)
         assert isinstance(lat, float) and isinstance(lon, float)
+        assert isinstance(serialized, str)
 
 
 def test_picker_constructs():
