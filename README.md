@@ -13,6 +13,10 @@ an action onto a button to bind it. Press the physical key to run the action.
 > libadwaita UI, XDG-compliant config, and **Wayland-compatible** key/text
 > injection (via `uinput`) instead of the X11-only path.
 
+## Screenshots
+
+![The Veranda editor: device keys on the left, action library on the right](data/screenshots/editor.png)
+
 ## Features
 
 - Native GTK4 + libadwaita two-pane editor with drag-and-drop binding.

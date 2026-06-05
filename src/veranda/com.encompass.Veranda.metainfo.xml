@@ -48,6 +48,13 @@
     <keyword>hotkey</keyword>
   </keywords>
 
+  <screenshots>
+    <screenshot type="default">
+      <caption>The two-pane editor — device keys on the left, action library on the right</caption>
+      <image>https://raw.githubusercontent.com/encompass/veranda/main/data/screenshots/editor.png</image>
+    </screenshot>
+  </screenshots>
+
   <provides>
     <binary>veranda</binary>
   </provides>
