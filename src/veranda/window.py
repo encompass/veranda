@@ -90,6 +90,7 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._screensaver = ScreensaverMonitor(self._on_screensaver_changed)
         self._screensaver.start()
         self._screensaver_active = self._screensaver.active
+        self._fade_sources: dict[str, int] = {}  # serial -> brightness-fade timer
 
         self._quitting = False
         self._shutdown_done = False
@@ -900,8 +901,37 @@ class VerandaWindow(Adw.ApplicationWindow):
         state = self._config.decks.get(serial)
         if state is None:
             return
+        self._cancel_fade(serial)  # an explicit set overrides any in-flight fade
         dimmed = self._screensaver_active and state.dim_on_lock
         self._deck_manager.set_brightness(serial, 0 if dimmed else state.brightness)
+
+    def _cancel_fade(self, serial: str) -> None:
+        src = self._fade_sources.pop(serial, None)
+        if src is not None:
+            GLib.source_remove(src)
+
+    def _fade_brightness(self, serial: str, target: int, duration_ms: int = 450) -> None:
+        """Smoothly ramp a device's brightness to ``target`` (lock dim/wake)."""
+        self._cancel_fade(serial)
+        start = self._deck_manager.get_brightness(serial)
+        if start == target:
+            self._deck_manager.set_brightness(serial, target)
+            return
+        steps = max(1, duration_ms // 25)
+        delta = (target - start) / steps
+        progress = {"i": 0, "value": float(start)}
+
+        def step() -> bool:
+            progress["i"] += 1
+            if progress["i"] >= steps:
+                self._deck_manager.set_brightness(serial, target)
+                self._fade_sources.pop(serial, None)
+                return False
+            progress["value"] += delta
+            self._deck_manager.set_brightness(serial, int(round(progress["value"])))
+            return True
+
+        self._fade_sources[serial] = GLib.timeout_add(25, step)
 
     # -- screensaver / lock sync -----------------------------------------
 
@@ -913,11 +943,19 @@ class VerandaWindow(Adw.ApplicationWindow):
 
     def _on_screensaver_changed(self, active: bool) -> None:
         self._screensaver_active = active
-        for serial in self._deck_manager.serials():
-            self._apply_brightness(serial)
-        # On wake, repaint live keys that were skipped while the deck was dark.
+        # On wake, repaint live keys skipped while dark first, so the fade-in
+        # reveals current content rather than stale images.
         if not active and self._current_serial is not None:
             self._live.repaint_all(self._config.deck(self._current_serial).current_page())
+        for serial in self._deck_manager.serials():
+            state = self._config.decks.get(serial)
+            if state is None:
+                continue
+            if state.dim_on_lock:
+                # Fade to black on lock, fade back up on wake.
+                self._fade_brightness(serial, 0 if active else state.brightness)
+            else:
+                self._apply_brightness(serial)
 
     def screensaver_available(self) -> bool:
         return self._screensaver.available
@@ -1444,6 +1482,9 @@ class VerandaWindow(Adw.ApplicationWindow):
         if self._accent_handler:
             _sm.disconnect(self._accent_handler)
             self._accent_handler = 0
+        for src in list(self._fade_sources.values()):
+            GLib.source_remove(src)
+        self._fade_sources.clear()
         self._live.stop()
         self._virtual.shutdown()
         self._screensaver.stop()
