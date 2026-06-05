@@ -134,34 +134,39 @@ class WeatherWidget(LiveWidget):
         return self.params.get("name") or "No location set"
 
     def build_editor_rows(self, button, on_change: Callable[[], None]):
-        from gi.repository import Adw
+        from gi.repository import Adw, Gtk
 
-        rows = []
-        name_row = Adw.EntryRow(title="Location name")
-        name_row.set_text(self.params.get("name", ""))
-        name_row.connect("changed", lambda r: (self.params.__setitem__("name", r.get_text()), on_change()))
-        rows.append(name_row)
-        for key, title in (("lat", "Latitude"), ("lon", "Longitude")):
-            row = Adw.EntryRow(title=title)
-            row.set_text(str(self.params.get(key, "")))
-            row.connect("changed", self._coord_handler(key, on_change))
-            rows.append(row)
-        return rows
+        from veranda.weatherpicker import WeatherLocationPicker
 
-    def _coord_handler(self, key, on_change):
-        def changed(row):
-            text = row.get_text().strip()
-            try:
-                self.params[key] = float(text)
-            except ValueError:
-                self.params.pop(key, None)
+        row = Adw.ActionRow(
+            title="Location",
+            subtitle=self.params.get("name") or "None chosen",
+        )
+        choose = Gtk.Button(label="Choose…", valign=Gtk.Align.CENTER)
+
+        def pick(name, lat, lon):
+            self.params["name"] = name
+            self.params["lat"] = lat
+            self.params["lon"] = lon
+            self._temp = None  # force a fresh fetch for the new place
+            row.set_subtitle(name)
             on_change()
 
-        return changed
+        choose.connect(
+            "clicked",
+            lambda _b: WeatherLocationPicker(pick, self._open_weather).present(row.get_root()),
+        )
+        row.add_suffix(choose)
+        row.set_activatable_widget(choose)
+        return [row]
 
-    def execute(self, ctx: ActionContext) -> None:
+    @staticmethod
+    def _open_weather() -> None:
         if not launch.open_app("org.gnome.Weather"):
             launch.run(["gnome-weather"])
+
+    def execute(self, ctx: ActionContext) -> None:
+        self._open_weather()
 
 
 class UpdatesWidget(LiveWidget):
