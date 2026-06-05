@@ -18,6 +18,7 @@ from veranda.actions.open_app import OpenAppAction
 from veranda.actions.open_url import OpenUrlAction
 from veranda.actions.extras import CopyTextAction, OpenFolderAction
 from veranda.actions.run_command import RunCommandAction
+from veranda.actions.settings_panel import OpenSettingsPanelAction
 from veranda.actions.special.connectivity import (
     NetworkWidget,
     UpdatesWidget,
@@ -49,6 +50,7 @@ ACTION_CATALOG: list[type[Action]] = [
     BrightnessAction,
     # App Control
     MediaControlAction,
+    OpenSettingsPanelAction,
     # Special Buttons (live widgets)
     ClockWidget,
     DateWidget,
