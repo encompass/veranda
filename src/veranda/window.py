@@ -152,6 +152,7 @@ class VerandaWindow(Adw.ApplicationWindow):
             ("preferences", self._open_settings),
             ("rename_device", self.rename_device),
             ("add-virtual-device", self._add_virtual_device),
+            ("virtual-settings", self._virtual_settings_current),
             ("import", lambda: self.import_profile_dialog()),
             ("export", lambda: self.export_profile_dialog()),
             ("about", self._show_about),
@@ -186,6 +187,7 @@ class VerandaWindow(Adw.ApplicationWindow):
         menu = Gio.Menu()
         menu.append("Rename Device…", "win.rename_device")
         menu.append("Add Virtual Device…", "win.add-virtual-device")
+        menu.append("Virtual Device Settings…", "win.virtual-settings")
         menu.append("Preferences", "win.preferences")
         backup = Gio.Menu()
         backup.append("Import Buttons…", "win.import")
@@ -202,8 +204,9 @@ class VerandaWindow(Adw.ApplicationWindow):
 
     def _add_virtual_device(self) -> None:
         self._virtual_form(
-            "New Virtual Device", "Virtual Deck", 2, 3, "",
-            lambda name, rows, cols, bg: self._virtual.add(rows, cols, name, bg),
+            "New Virtual Device", "Virtual Deck", 2, 3, "", True,
+            lambda name, rows, cols, bg, visible:
+                self._virtual.add(rows, cols, name, bg, visible),
         )
 
     def _virtual_settings(self, serial: str) -> None:
@@ -211,21 +214,31 @@ class VerandaWindow(Adw.ApplicationWindow):
         if state is None:
             return
 
-        def apply(name: str, rows: int, cols: int, bg: str) -> None:
+        def apply(name: str, rows: int, cols: int, bg: str, visible: bool) -> None:
             if name != state.name:
                 state.name = name
                 self._config.save()
             self._virtual.set_background(serial, bg)
+            self._virtual.set_visible(serial, visible)
             self._virtual.resize(serial, rows, cols)  # no-op if unchanged
             self._refresh()
 
         self._virtual_form(
             f"{state.display_name} — Settings", state.name or "Virtual Deck",
             state.grid_rows or 2, state.grid_cols or 3,
-            str(state.window.get("bg", "")), apply,
+            str(state.window.get("bg", "")), bool(state.window.get("visible", True)),
+            apply,
         )
 
-    def _virtual_form(self, title, name, rows, cols, bg, on_apply) -> None:
+    def _virtual_settings_current(self) -> None:
+        serial = self._current_serial
+        state = self._config.decks.get(serial) if serial else None
+        if state is not None and state.virtual:
+            self._virtual_settings(serial)
+        else:
+            self.notify("Select a virtual device first")
+
+    def _virtual_form(self, title, name, rows, cols, bg, visible, on_apply) -> None:
         from gi.repository import Gdk
 
         from veranda import render
@@ -274,7 +287,12 @@ class VerandaWindow(Adw.ApplicationWindow):
         bg_row.add_suffix(color_btn)
         bg_row.add_suffix(reset)
 
-        for row in (name_row, rows_row, cols_row, bg_row):
+        visible_row = Adw.SwitchRow(
+            title="Show window", subtitle="Hide to keep it out of the way"
+        )
+        visible_row.set_active(visible)
+
+        for row in (name_row, rows_row, cols_row, bg_row, visible_row):
             group.add(row)
         page.add(group)
         toolbar.set_content(page)
@@ -284,6 +302,7 @@ class VerandaWindow(Adw.ApplicationWindow):
             on_apply(
                 name_row.get_text().strip() or "Virtual Deck",
                 int(rows_row.get_value()), int(cols_row.get_value()), chosen["bg"],
+                visible_row.get_active(),
             )
             dialog.close()
 

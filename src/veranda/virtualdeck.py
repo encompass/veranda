@@ -130,6 +130,7 @@ class VirtualDeckWindow(Gtk.ApplicationWindow):
         on_settings: Callable[[], None],
         on_close: Callable[[], None],
         on_toggle_top: Callable[[bool], None],
+        on_hide: Callable[[], None] = lambda: None,
         on_top: bool = False,
         bg: str = "",
     ) -> None:
@@ -138,6 +139,7 @@ class VirtualDeckWindow(Gtk.ApplicationWindow):
         self._on_settings = on_settings
         self._on_close = on_close
         self._on_toggle_top = on_toggle_top
+        self._on_hide = on_hide
         self._on_top = on_top
         rows, cols = deck.key_layout()
 
@@ -225,6 +227,11 @@ class VirtualDeckWindow(Gtk.ApplicationWindow):
         settings.connect("clicked", lambda _b: (popover.popdown(), self._on_settings()))
         box.append(settings)
 
+        hide = Gtk.Button(child=Gtk.Label(label="Hide", xalign=0.0))
+        hide.add_css_class("flat")
+        hide.connect("clicked", lambda _b: (popover.popdown(), self._on_hide()))
+        box.append(hide)
+
         close = Gtk.Button(child=Gtk.Label(label="Close", xalign=0.0))
         close.add_css_class("flat")
         close.connect("clicked", lambda _b: (popover.popdown(), self._on_close()))
@@ -269,7 +276,8 @@ class VirtualDeckManager:
             if state.virtual and serial not in self._decks:
                 self._build(serial, state)
 
-    def add(self, rows: int, cols: int, name: str = "Virtual Deck", bg: str = "") -> str:
+    def add(self, rows: int, cols: int, name: str = "Virtual Deck",
+            bg: str = "", visible: bool = True) -> str:
         serial = self._next_serial()
         state = self._config.deck(serial)
         state.virtual = True
@@ -277,6 +285,7 @@ class VirtualDeckManager:
         state.name = name
         state.deck_type = f"Virtual {rows}×{cols}"
         state.window["bg"] = bg
+        state.window["visible"] = visible
         self._config.save()
         self._build(serial, state)
         return serial
@@ -290,6 +299,24 @@ class VirtualDeckManager:
         deck = self._decks.get(serial)
         if deck is not None and deck.window is not None:
             deck.window.set_background(bg)
+
+    def set_visible(self, serial: str, visible: bool) -> None:
+        state = self._config.decks.get(serial)
+        if state is None:
+            return
+        state.window["visible"] = visible
+        self._config.save()
+        deck = self._decks.get(serial)
+        if deck is not None and deck.window is not None:
+            if visible:
+                deck.window.present()
+            else:
+                deck.window.set_visible(False)
+        self._windows_changed()
+
+    def is_visible(self, serial: str) -> bool:
+        state = self._config.decks.get(serial)
+        return bool(state.window.get("visible", True)) if state else False
 
     def remove(self, serial: str) -> None:
         ctrl = self._live.pop(serial, None)
@@ -324,13 +351,15 @@ class VirtualDeckManager:
             on_settings=lambda s=serial: self._open_settings(s),
             on_close=lambda s=serial: self.remove(s),
             on_toggle_top=lambda active, s=serial: self._set_on_top(s, active),
+            on_hide=lambda s=serial: self.set_visible(s, False),
             on_top=bool(state.window.get("on_top", False)),
             bg=str(state.window.get("bg", "")),
         )
         deck.window = win
         self._decks[serial] = deck
         self._dm.add_virtual_deck(deck)
-        win.present()
+        if state.window.get("visible", True):
+            win.present()  # otherwise created hidden until shown from Settings
         self._live[serial] = LiveButtonController(self._repaint_cb(serial))
         self._windows_changed()
 
@@ -381,6 +410,8 @@ class VirtualDeckManager:
             if state is None or deck.window is None:
                 continue
             w = state.window
+            if not w.get("visible", True):
+                continue  # nothing to place/raise for a hidden window
             out.append((
                 deck.window.get_title(),
                 int(w.get("x", 80)), int(w.get("y", 80)),

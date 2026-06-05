@@ -135,6 +135,39 @@ def test_manager_set_background_persists_and_applies():
     assert applied == ["#abcdef"]
 
 
+def test_manager_set_visible_persists_and_applies():
+    from veranda.config import AppConfig
+    from veranda.virtualdeck import VirtualDeckManager
+
+    cfg = AppConfig(decks={"virtual-1": DeckState(
+        serial="virtual-1", virtual=True, grid_rows=1, grid_cols=1,
+        window={"visible": True})})
+    mgr = VirtualDeckManager(None, None, cfg, refresh=lambda: None,
+                             open_settings=lambda s: None, windows_changed=lambda: None)
+    calls = []
+
+    class FakeWin:
+        def present(self):
+            calls.append("show")
+
+        def set_visible(self, v):
+            calls.append(("set", v))
+
+    class FakeDeck:
+        window = FakeWin()
+
+    mgr._decks["virtual-1"] = FakeDeck()
+
+    mgr.set_visible("virtual-1", False)
+    assert cfg.decks["virtual-1"].window["visible"] is False
+    assert ("set", False) in calls
+    assert mgr.is_visible("virtual-1") is False
+
+    mgr.set_visible("virtual-1", True)
+    assert "show" in calls
+    assert mgr.is_visible("virtual-1") is True
+
+
 def test_press_dispatches_through_manager():
     presses = []
     dm = DeckManager(on_key_press=lambda s, k: presses.append((s, k)),
