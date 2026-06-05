@@ -205,6 +205,85 @@ class VerandaWindow(Adw.ApplicationWindow):
                 self._virtual.add(rows, cols, name, bg, visible),
         )
 
+    def _device_settings(self, serial: str) -> None:
+        """Open the settings modal for a device (virtual or real)."""
+        state = self._config.decks.get(serial)
+        if state is None:
+            return
+        if state.virtual:
+            self._virtual_settings(serial)
+        else:
+            self._real_device_settings(serial)
+
+    def _set_dim_for(self, serial: str, enabled: bool) -> None:
+        state = self._config.decks.get(serial)
+        if state is None:
+            return
+        state.dim_on_lock = bool(enabled)
+        self._config.save()
+        self._apply_brightness(serial)
+
+    def _real_device_settings(self, serial: str) -> None:
+        state = self._config.decks.get(serial)
+        if state is None:
+            return
+        dialog = Adw.Dialog()
+        dialog.set_title(f"{state.display_name} — Settings")
+        dialog.set_content_width(380)
+        toolbar = Adw.ToolbarView()
+        header = Adw.HeaderBar()
+        apply_btn = Gtk.Button(label="Apply")
+        apply_btn.add_css_class("suggested-action")
+        header.pack_end(apply_btn)
+        toolbar.add_top_bar(header)
+
+        page = Adw.PreferencesPage()
+        group = Adw.PreferencesGroup()
+        name_row = Adw.EntryRow(title="Name")
+        name_row.set_text(state.name)
+        bright_row = Adw.SpinRow(
+            title="Brightness", subtitle="Percent",
+            adjustment=Gtk.Adjustment(lower=0, upper=100, step_increment=5,
+                                      value=state.brightness),
+        )
+        group.add(name_row)
+        group.add(bright_row)
+        dim_row = None
+        if self.screensaver_available():
+            dim_row = Adw.SwitchRow(
+                title="Blank screen when locked",
+                subtitle="Fade the deck to black while the session is locked",
+            )
+            dim_row.set_active(state.dim_on_lock)
+            group.add(dim_row)
+        page.add(group)
+
+        info = self._deck_manager.info(serial)
+        if info is not None:
+            info_group = Adw.PreferencesGroup(title="Device")
+            for title, value in (("Model", info.deck_type or "—"), ("Serial", serial)):
+                row = Adw.ActionRow(title=title, subtitle=value)
+                row.add_css_class("property")
+                info_group.add(row)
+            page.add(info_group)
+
+        toolbar.set_content(page)
+        dialog.set_child(toolbar)
+
+        def do_apply(_b):
+            name = name_row.get_text().strip()
+            if name != state.name:
+                state.name = name
+                self._config.save()
+            self._set_device_brightness(serial, int(bright_row.get_value()))
+            if dim_row is not None:
+                self._set_dim_for(serial, dim_row.get_active())
+            self._refresh()
+            dialog.close()
+
+        apply_btn.connect("clicked", do_apply)
+        dialog.present(self)
+
     def _virtual_settings(self, serial: str) -> None:
         state = self._config.decks.get(serial)
         if state is None:
@@ -395,7 +474,7 @@ class VerandaWindow(Adw.ApplicationWindow):
             on_select=self._select_device,
             on_add=self._add_virtual_device,
             on_rename=self._rename_device_at,
-            on_settings=lambda s: self._virtual_settings(s),
+            on_settings=lambda s: self._device_settings(s),
             on_remove=lambda s: self._virtual.remove(s),
         )
         sidebar.append(self._devices_panel)

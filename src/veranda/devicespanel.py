@@ -96,8 +96,8 @@ class DevicesPanel(Gtk.Box):
             vbox.append(b)
 
         item("Rename…", self._on_rename)
+        item("Settings…", self._on_settings)
         if is_virtual:
-            item("Settings…", self._on_settings)
             item("Remove", self._on_remove)
         popover.set_child(vbox)
         button.set_popover(popover)
