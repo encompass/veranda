@@ -221,6 +221,10 @@ class DoNotDisturbWidget(LiveWidget):
     DESCRIPTION = "Toggle notification banners"
     ICON = "preferences-system-notifications-symbolic"
     SCHEMA = "org.gnome.desktop.notifications"
+    EDIT_LABEL = False  # the bell / bell-slash icon says it all
+
+    def default_label(self) -> str:
+        return ""
 
     def __init__(self, params: dict | None = None) -> None:
         super().__init__(params)
