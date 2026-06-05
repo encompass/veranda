@@ -3,6 +3,8 @@
 A modern **GTK4 / libadwaita** application for managing Elgato Stream Deck
 devices on Linux, built to feel native to GNOME.
 
+Project home: <https://github.com/encompass/veranda>
+
 The interface is a two-pane editor: the physical buttons are shown on the left
 as a grid that matches your device, and an action library is on the right. Drag
 an action onto a button to bind it. Press the physical key to run the action.

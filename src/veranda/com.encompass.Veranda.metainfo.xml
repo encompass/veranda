@@ -31,6 +31,10 @@
 
   <launchable type="desktop-id">com.encompass.Veranda.desktop</launchable>
 
+  <url type="homepage">https://github.com/encompass/veranda</url>
+  <url type="bugtracker">https://github.com/encompass/veranda/issues</url>
+  <url type="vcs-browser">https://github.com/encompass/veranda</url>
+
   <categories>
     <category>Utility</category>
     <category>GTK</category>

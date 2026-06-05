@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "GPL-3.0-or-later" }
 authors = [{ name = "Jason \"JBear\" Brower", email = "encompass@gmail.com" }]
+urls = { Homepage = "https://github.com/encompass/veranda", Repository = "https://github.com/encompass/veranda", Issues = "https://github.com/encompass/veranda/issues" }
 dependencies = [
     "streamdeck>=0.9.5",
     "pillow>=10",
