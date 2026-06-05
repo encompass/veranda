@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+export PYBUILD_NAME = veranda
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+%:
+	dh $@ --buildsystem=pybuild
+
+# The python-elgato-streamdeck library ("streamdeck" on PyPI) is not in the
+# Debian archive, so vendor it into the package. This needs network access
+# during the build (fine locally and in CI; for an offline buildd, drop a
+# pre-downloaded wheel into the target directory instead).
+override_dh_auto_install:
+	dh_auto_install
+	pip3 install --no-deps --no-compile --upgrade \
+		--target=debian/veranda/usr/lib/python3/dist-packages streamdeck

@@ -1,0 +1,59 @@
+# Build the Flatpak, Snap, and Debian packages.
+#
+# Runs on version tags (v*) and on manual dispatch. Each job uploads its
+# artifact; wire up publishing (Flathub / Snap Store / a repo) separately.
+name: packaging
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  flatpak:
+    name: Flatpak
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-48
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: veranda.flatpak
+          manifest-path: flatpak/com.encompass.Veranda.yaml
+          cache-key: flatpak-builder-${{ github.sha }}
+
+  snap:
+    name: Snap
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snapcore/action-build@v1
+        id: build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: snap
+          path: ${{ steps.build.outputs.snap }}
+
+  deb:
+    name: Debian package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            debhelper dh-python python3-all python3-setuptools python3-pip \
+            python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 python3-pil python3-evdev \
+            libhidapi-libusb0
+      - name: Build
+        run: dpkg-buildpackage -us -uc -b
+      - name: Collect
+        run: |
+          mkdir -p out && cp ../veranda_*_*.deb out/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: out/*.deb

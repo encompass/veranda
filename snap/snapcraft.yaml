@@ -1,0 +1,70 @@
+# Snap package for Veranda.
+#
+# Build (from the repo root):
+#   snapcraft            # produces veranda_<ver>_amd64.snap
+#   sudo snap install --dangerous ./veranda_*.snap
+#
+# Confinement note: this snap is STRICT. The Stream Deck (USB/hidraw) works via
+# the raw-usb/hardware-observe plugs, but /dev/uinput has no strict-mode
+# interface, so the Hotkey and Type Text actions (key injection) will NOT work
+# under strict confinement. If those actions matter, build with
+# `confinement: classic` (uncomment below) — classic grants full host access so
+# uinput works, at the cost of requiring manual review for Snap Store
+# publishing.
+name: veranda
+base: core24
+adopt-info: veranda
+summary: Manage your Elgato Stream Deck
+description: |
+  Veranda is a modern GTK4 / libadwaita application for managing Elgato Stream
+  Deck devices on Linux, built to feel native to GNOME. Drag actions onto keys
+  to launch apps, run commands, press hotkeys, type text, or build macros, and
+  arrange them across pages and profiles. Live "Special Buttons" turn keys into
+  glanceable widgets (clock, now playing, battery, volume, and more).
+license: GPL-3.0-or-later
+grade: stable
+confinement: strict
+# confinement: classic   # <- use instead for working uinput key injection
+
+platforms:
+  amd64:
+
+apps:
+  veranda:
+    command: bin/veranda
+    extensions: [gnome]
+    common-id: com.encompass.Veranda
+    desktop: usr/share/applications/com.encompass.Veranda.desktop
+    plugs:
+      - home
+      - network
+      - network-bind
+      - raw-usb
+      - hardware-observe
+      - hidraw
+      - upower-observe
+      - mpris
+      - unity7
+
+parts:
+  veranda:
+    plugin: python
+    source: .
+    python-packages:
+      - streamdeck
+      - Pillow
+      - evdev
+    stage-packages:
+      - libhidapi-libusb0
+      - libusb-1.0-0
+    parse-info: [usr/share/metainfo/com.encompass.Veranda.metainfo.xml]
+    override-build: |
+      craftctl default
+      craftctl set version="$(grep -oP '__version__\s*=\s*"\K[^"]+' \
+        "$CRAFT_PART_SRC/src/veranda/__init__.py")"
+      install -Dm644 data/com.encompass.Veranda.desktop \
+        "$CRAFT_PART_INSTALL/usr/share/applications/com.encompass.Veranda.desktop"
+      install -Dm644 data/com.encompass.Veranda.metainfo.xml \
+        "$CRAFT_PART_INSTALL/usr/share/metainfo/com.encompass.Veranda.metainfo.xml"
+      install -Dm644 src/veranda/icon.svg \
+        "$CRAFT_PART_INSTALL/usr/share/icons/hicolor/scalable/apps/com.encompass.Veranda.svg"

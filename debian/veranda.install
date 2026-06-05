@@ -1,0 +1,5 @@
+data/com.encompass.Veranda.desktop usr/share/applications
+data/com.encompass.Veranda.metainfo.xml usr/share/metainfo
+data/icons/hicolor/scalable/apps/com.encompass.Veranda.svg usr/share/icons/hicolor/scalable/apps
+data/com.encompass.Veranda.search-provider.ini usr/share/gnome-shell/search-providers
+data/60-veranda-streamdeck.rules lib/udev/rules.d

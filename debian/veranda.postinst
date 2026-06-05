@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "configure" ]; then
+    # Reload udev so the Stream Deck uaccess rule applies without a reboot.
+    if command -v udevadm >/dev/null 2>&1; then
+        udevadm control --reload-rules || true
+        udevadm trigger --subsystem-match=usb || true
+    fi
+fi
+
+#DEBHELPER#
+
+exit 0

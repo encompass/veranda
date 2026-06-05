@@ -1,0 +1,35 @@
+Source: veranda
+Section: utils
+Priority: optional
+Maintainer: Jason "JBear" Brower <encompass@gmail.com>
+Build-Depends:
+ debhelper-compat (= 13),
+ dh-python,
+ python3-all,
+ python3-setuptools,
+Standards-Version: 4.7.0
+Homepage: https://github.com/encompass/veranda
+Rules-Requires-Root: no
+
+Package: veranda
+Architecture: all
+Depends:
+ ${python3:Depends},
+ ${misc:Depends},
+ python3-gi,
+ gir1.2-gtk-4.0 (>= 4.10),
+ gir1.2-adw-1,
+ python3-pil,
+ python3-evdev,
+ libhidapi-libusb0,
+Recommends:
+ gnome-shell-extension-appindicator,
+Description: Stream Deck manager for GNOME
+ Veranda is a modern GTK4 / libadwaita application for managing Elgato Stream
+ Deck devices on Linux, built to feel native to GNOME. Drag actions onto keys
+ to launch apps, run commands, press hotkeys, type text, or build macros, and
+ arrange them across pages and profiles. Live "Special Buttons" turn keys into
+ glanceable widgets such as a clock, now playing, battery, or volume.
+ .
+ The python-elgato-streamdeck library ("streamdeck" on PyPI) is vendored into
+ this package at build time, as it is not yet in the Debian archive.

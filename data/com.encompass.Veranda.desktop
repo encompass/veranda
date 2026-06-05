@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Veranda
+GenericName=Stream Deck Manager
+Comment=Manage your Elgato Stream Deck
+Exec=veranda
+Icon=com.encompass.Veranda
+Terminal=false
+Categories=Utility;GTK;
+Keywords=Stream Deck;Elgato;macro;shortcut;hotkey;
+StartupNotify=true

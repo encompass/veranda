@@ -89,6 +89,12 @@ sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 libhidapi-libusb0
 
 Python packages (`streamdeck`, `pillow`, `evdev`) install via pip below.
 
+## Packages
+
+Veranda ships **Flatpak**, **Snap**, and **Debian** packaging — see
+[PACKAGING.md](PACKAGING.md) for build instructions and the per-format device
+(USB/`uinput`) access notes. Flatpak is the recommended channel.
+
 ## Install & run (development)
 
 Use a venv that can still see the system `gi` bindings:

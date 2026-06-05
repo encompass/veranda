@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 Jason "JBear" Brower -->
 <component type="desktop-application">
   <id>com.encompass.Veranda</id>
   <metadata_license>CC0-1.0</metadata_license>
@@ -7,35 +8,32 @@
   <name>Veranda</name>
   <summary>Manage your Elgato Stream Deck</summary>
 
-  <developer id="com.encompass">
-    <name>Jason "JBear" Brower</name>
-  </developer>
-
   <description>
     <p>
-      Veranda is a modern, GNOME-native application for managing Elgato Stream
-      Deck devices on Linux. Bind keys with drag and drop, organize them into
-      profiles and pages, and choose from a rich set of actions.
+      Veranda is a modern, GNOME-native manager for Elgato Stream Deck devices.
+      Drag actions onto keys to launch apps, run commands, press hotkeys, type
+      text, open URLs and folders, or build multi-step macros — and arrange them
+      across pages and profiles.
     </p>
-    <p>Features:</p>
-    <ul>
-      <li>Two-pane editor with live previews of every key</li>
-      <li>Actions: run a command, open a URL or folder, send hotkeys or text,
-          trigger any GNOME keyboard shortcut, copy text, and control the deck</li>
-      <li>Special Buttons that update live: clock, date, now playing, unread
-          counts, battery, system monitor, volume, network, weather, and more</li>
-      <li>Profiles and pages, with import and export</li>
-      <li>Per-key colors that follow the GNOME theme or accent color</li>
-      <li>Run in the background with a Quick Settings entry, lock-screen sync,
-          and automatic profile switching based on the focused app</li>
-    </ul>
+    <p>
+      Live "Special Buttons" turn keys into glanceable widgets — clock, date,
+      now-playing, battery, volume, system load, network, weather, and more —
+      that update on a timer or on desktop events. Keys can show symbolic icons,
+      uploaded images, or animated GIFs, with per-tile colors drawn from your
+      GNOME theme.
+    </p>
+    <p>
+      Veranda integrates deeply with GNOME: it runs in the background with a
+      tray entry, ships an optional Quick Settings extension, exposes profiles to
+      the Activities overview search, and can be driven from the command line.
+    </p>
   </description>
 
   <launchable type="desktop-id">com.encompass.Veranda.desktop</launchable>
-  <content_rating type="oars-1.1"/>
 
   <url type="homepage">https://github.com/encompass/veranda</url>
   <url type="bugtracker">https://github.com/encompass/veranda/issues</url>
+  <url type="vcs-browser">https://github.com/encompass/veranda</url>
 
   <categories>
     <category>Utility</category>
@@ -46,15 +44,52 @@
     <keyword>Stream Deck</keyword>
     <keyword>Elgato</keyword>
     <keyword>macro</keyword>
+    <keyword>shortcut</keyword>
     <keyword>hotkey</keyword>
   </keywords>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>The two-pane editor — device keys on the left, action library on the right</caption>
+      <image>https://raw.githubusercontent.com/encompass/veranda/main/data/screenshots/editor.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Live Special Buttons: now playing, battery, do-not-disturb, and more</caption>
+      <image>https://raw.githubusercontent.com/encompass/veranda/main/data/screenshots/deck-keys.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Configure any key: icon, label, per-tile color, and action</caption>
+      <image>https://raw.githubusercontent.com/encompass/veranda/main/data/screenshots/tile-editor.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Bind a key to launch any installed application</caption>
+      <image>https://raw.githubusercontent.com/encompass/veranda/main/data/screenshots/app-picker.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Auto-switch profiles when an app takes focus</caption>
+      <image>https://raw.githubusercontent.com/encompass/veranda/main/data/screenshots/settings-automation.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Back up or restore everything to a single file</caption>
+      <image>https://raw.githubusercontent.com/encompass/veranda/main/data/screenshots/settings-backup.png</image>
+    </screenshot>
+  </screenshots>
+
+  <provides>
+    <binary>veranda</binary>
+  </provides>
+
+  <content_rating type="oars-1.1" />
+
+  <developer id="com.encompass">
+    <name>Jason "JBear" Brower</name>
+  </developer>
+  <update_contact>encompass@gmail.com</update_contact>
 
   <releases>
     <release version="0.1.0" date="2026-06-04">
       <description>
-        <p>First release: editor, profiles, actions, Special Buttons, and deep
-        GNOME integration (Quick Settings extension, lock sync, focus-based
-        profile switching).</p>
+        <p>Initial release.</p>
       </description>
     </release>
   </releases>
