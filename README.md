@@ -175,6 +175,25 @@ gnome-extensions enable veranda@encompass.gmail.com
 The extension's top-bar icon appears only while the Veranda app is running, so
 pair it with "Run in the background" / "Open at login".
 
+## Virtual devices
+
+Don't have a Stream Deck on hand (or want more keys)? **Add Virtual Device…**
+from the main menu creates a software deck in its own **borderless floating
+window** with a grid size you choose (1×1 and up). It behaves like a real
+device: it shows up in the device dropdown and is edited in the normal editor
+(actions, profiles, pages, special buttons all work), and clicking a key in the
+floating window runs its action. Drag the window by its background to move it;
+right-click for **Always on top**, **Settings…** (rename / resize), and
+**Close**. Multiple virtual decks are supported, and each remembers its size,
+content, and position.
+
+> **Always-on-top and remembered position need the Veranda GNOME Shell
+> extension** — on GNOME Wayland an app can't place or raise its own windows, so
+> the extension does it from the compositor. Without the extension the window is
+> still a borderless, draggable deck; it just won't stay on top or restore its
+> exact position. (Reinstall the extension after upgrading: `./extension/install.sh`
+> then log out/in.)
+
 ## Search the overview
 
 Veranda registers a GNOME Shell **search provider**, so you can press `Super`,
