@@ -42,3 +42,14 @@
   background-color: @window_bg_color;
   padding: 24px;
 }
+
+/* Virtual deck floating window: transparent toplevel so the rounded surface
+   shows through at the corners. */
+.virtual-deck {
+  background-color: transparent;
+}
+
+.virtual-deck-surface {
+  border-radius: 18px;
+  background-color: @window_bg_color;  /* overridden per-deck for a custom color */
+}

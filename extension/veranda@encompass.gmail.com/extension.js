@@ -29,6 +29,10 @@ const ControlIface = `
   <method name="SetActiveProfile"><arg type="u" direction="in"/></method>
   <method name="SetBrightness"><arg type="i" direction="in"/></method>
   <method name="GetState"><arg type="a{sv}" direction="out"/></method>
+  <method name="GetVirtualWindows"><arg type="a(siib)" direction="out"/></method>
+  <method name="ReportVirtualWindowMoved">
+   <arg type="s" direction="in"/><arg type="i" direction="in"/><arg type="i" direction="in"/>
+  </method>
   <signal name="StateChanged"/>
  </interface>
 </node>`;
@@ -151,6 +155,89 @@ export default class VerandaExtension extends Extension {
         this._focusTimeout = 0;
         this._focusId = global.display.connect(
             'notify::focus-window', () => this._scheduleFocusPush());
+
+        // Place / keep-above Veranda's virtual deck windows (the app can't do
+        // this itself on Wayland).
+        this._tracked = new Map();        // Meta.Window -> [signalIds…]
+        this._virtualSyncTimeout = 0;
+        this._windowCreatedId = global.display.connect(
+            'window-created', () => this._scheduleVirtualSync());
+    }
+
+    _scheduleVirtualSync() {
+        if (this._virtualSyncTimeout)
+            return;
+        this._virtualSyncTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
+            this._virtualSyncTimeout = 0;
+            this._syncVirtualWindows();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _syncVirtualWindows() {
+        if (!this._proxy)
+            return;
+        this._proxy.GetVirtualWindowsRemote((result, error) => {
+            if (error || !result)
+                return;
+            const wanted = new Map();  // title -> {x, y, onTop}
+            for (const [title, x, y, onTop] of result[0])
+                wanted.set(title, {x, y, onTop});
+            for (const actor of global.get_window_actors()) {
+                const win = actor.meta_window;
+                const title = win.get_title?.();
+                if (!title || !wanted.has(title))
+                    continue;
+                const {x, y, onTop} = wanted.get(title);
+                try {
+                    if (onTop)
+                        win.make_above();
+                    else
+                        win.unmake_above();
+                    win.stick();  // show on all workspaces
+                    if (!this._tracked.has(win)) {
+                        win.move_frame(true, x, y);  // initial placement only
+                        this._trackWindow(win, title);
+                    }
+                } catch (e) {
+                    logError(e, 'Veranda: placing virtual window');
+                }
+            }
+        });
+    }
+
+    _trackWindow(win, title) {
+        let saveTimeout = 0;
+        const posId = win.connect('position-changed', () => {
+            if (saveTimeout)
+                GLib.source_remove(saveTimeout);
+            saveTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 350, () => {
+                saveTimeout = 0;
+                const r = win.get_frame_rect();
+                this._proxy?.ReportVirtualWindowMovedRemote(title, r.x, r.y);
+                return GLib.SOURCE_REMOVE;
+            });
+        });
+        const goneId = win.connect('unmanaging', () => {
+            if (saveTimeout)
+                GLib.source_remove(saveTimeout);
+            this._untrackWindow(win);
+        });
+        this._tracked.set(win, [posId, goneId]);
+    }
+
+    _untrackWindow(win) {
+        const ids = this._tracked.get(win);
+        if (!ids)
+            return;
+        for (const id of ids) {
+            try {
+                win.disconnect(id);
+            } catch (e) {
+                // window already gone
+            }
+        }
+        this._tracked.delete(win);
     }
 
     _scheduleFocusPush() {
@@ -216,6 +303,7 @@ export default class VerandaExtension extends Extension {
             }
             this._indicator?.sync(this._unpack(result?.[0] ?? {}));
         });
+        this._scheduleVirtualSync();
     }
 
     _unpack(dict) {
@@ -266,6 +354,15 @@ export default class VerandaExtension extends Extension {
         if (this._focusId)
             global.display.disconnect(this._focusId);
         this._focusId = 0;
+        if (this._windowCreatedId)
+            global.display.disconnect(this._windowCreatedId);
+        this._windowCreatedId = 0;
+        if (this._virtualSyncTimeout) {
+            GLib.source_remove(this._virtualSyncTimeout);
+            this._virtualSyncTimeout = 0;
+        }
+        for (const win of [...(this._tracked?.keys() ?? [])])
+            this._untrackWindow(win);
         if (this._focusTimeout) {
             GLib.source_remove(this._focusTimeout);
             this._focusTimeout = 0;

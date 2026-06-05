@@ -27,6 +27,12 @@ _XML = """
   <method name="SetBrightness"><arg type="i" name="percent" direction="in"/></method>
   <method name="SetFocusedApp"><arg type="s" name="desktop_id" direction="in"/></method>
   <method name="GetState"><arg type="a{sv}" name="state" direction="out"/></method>
+  <method name="GetVirtualWindows"><arg type="a(siib)" name="windows" direction="out"/></method>
+  <method name="ReportVirtualWindowMoved">
+   <arg type="s" name="title" direction="in"/>
+   <arg type="i" name="x" direction="in"/>
+   <arg type="i" name="y" direction="in"/>
+  </method>
   <signal name="StateChanged"/>
  </interface>
 </node>
@@ -97,6 +103,13 @@ class VerandaDBusService:
             invocation.return_value(None)
         elif method == "GetState":
             invocation.return_value(GLib.Variant("(a{sv})", (self._state(),)))
+        elif method == "GetVirtualWindows":
+            wins = list(w.virtual_window_geometry())
+            invocation.return_value(GLib.Variant("(a(siib))", (wins,)))
+        elif method == "ReportVirtualWindowMoved":
+            title, x, y = params.unpack()
+            w.report_virtual_window_moved(title, int(x), int(y))
+            invocation.return_value(None)
         elif method == "Quit":
             invocation.return_value(None)
             w.real_quit()
