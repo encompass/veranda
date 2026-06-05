@@ -85,6 +85,31 @@ class DeckManager:
     def probe_failed(self) -> bool:
         return self._probe_failed
 
+    # -- virtual decks ----------------------------------------------------
+
+    def add_virtual_deck(self, deck) -> None:
+        """Register a software (virtual) deck so it behaves like hardware.
+
+        Reuses _open for storage + key-callback wiring; the deck is never
+        enumerated, so _scan won't drop it (see the is_virtual guard there).
+        """
+        with self._lock:
+            self._open(deck)
+        GLib.idle_add(self._on_decks_changed)
+
+    def remove_virtual_deck(self, serial: str) -> None:
+        with self._lock:
+            deck = self._decks.pop(serial, None)
+            self._info.pop(serial, None)
+            self._brightness.pop(serial, None)
+            if deck is not None:
+                self._by_id.pop(deck.id(), None)
+                try:
+                    deck.close()
+                except Exception:  # noqa: BLE001
+                    pass
+        GLib.idle_add(self._on_decks_changed)
+
     # -- rendering --------------------------------------------------------
 
     def apply_page(self, serial: str, page: Page) -> None:
@@ -103,6 +128,11 @@ class DeckManager:
             self._set_key(deck, key, button)
 
     def _set_key(self, deck, key: int, button: ButtonConfig | None) -> None:
+        # A virtual deck paints its own window from the ButtonConfig (the GUI
+        # preview path) — it has no native key-image format.
+        if getattr(deck, "is_virtual", False):
+            deck.render_key(key, button)
+            return
         try:
             image = (
                 render_native(deck, button)
@@ -164,9 +194,9 @@ class DeckManager:
                 if dev_id not in self._by_id:
                     if self._open(deck):
                         changed = True
-            # Devices that went away.
+            # Devices that went away (virtual decks aren't enumerated — skip).
             for dev_id in list(self._by_id.keys()):
-                if dev_id not in live_ids:
+                if dev_id not in live_ids and not getattr(self._by_id[dev_id], "is_virtual", False):
                     self._drop(dev_id)
                     changed = True
 

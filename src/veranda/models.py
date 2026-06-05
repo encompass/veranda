@@ -227,6 +227,11 @@ class DeckState:
     dim_on_lock: bool = False
     active_profile: int = 0
     profiles: list[Profile] = field(default_factory=lambda: [Profile()])
+    # Virtual ("software") device fields — unused by real hardware decks.
+    virtual: bool = False
+    grid_rows: int = 0
+    grid_cols: int = 0
+    window: dict[str, Any] = field(default_factory=dict)  # {"x","y","on_top"}
 
     @property
     def display_name(self) -> str:
@@ -242,7 +247,7 @@ class DeckState:
         return self.current_profile().current_page()
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        data = {
             "deck_type": self.deck_type,
             "name": self.name,
             "brightness": self.brightness,
@@ -250,6 +255,12 @@ class DeckState:
             "active_profile": self.active_profile,
             "profiles": [p.to_dict() for p in self.profiles],
         }
+        if self.virtual:
+            data["virtual"] = True
+            data["grid_rows"] = self.grid_rows
+            data["grid_cols"] = self.grid_cols
+            data["window"] = dict(self.window)
+        return data
 
     @classmethod
     def from_dict(cls, serial: str, data: dict[str, Any]) -> "DeckState":
@@ -269,4 +280,8 @@ class DeckState:
             dim_on_lock=bool(data.get("dim_on_lock", False)),
             active_profile=int(data.get("active_profile", 0)),
             profiles=profiles,
+            virtual=bool(data.get("virtual", False)),
+            grid_rows=int(data.get("grid_rows", 0)),
+            grid_cols=int(data.get("grid_cols", 0)),
+            window=dict(data.get("window") or {}),
         )
