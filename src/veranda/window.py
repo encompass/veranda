@@ -21,6 +21,7 @@ from veranda.grid import DeckGrid
 from veranda.input_backend import shared_backend
 from veranda.library import ActionLibrary
 from veranda.pagespanel import PagesPanel
+from veranda.virtualdeck import VirtualDeckManager
 from veranda.models import ActionItem, ButtonConfig, DeckState, Page, Profile
 from veranda.screensaver import ScreensaverMonitor
 from veranda.settings import SettingsDialog, prompt_text
@@ -119,12 +120,21 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._undo = UndoStack()
         self._key_clipboard: ButtonConfig | None = None
 
+        # Virtual ("software") decks: floating windows that act like devices.
+        self._virtual = VirtualDeckManager(
+            self.get_application(), self._deck_manager, self._config,
+            refresh=self._refresh,
+            open_settings=self._virtual_settings,
+            windows_changed=self._dbus.notify_changed,
+        )
+
         # Re-render keys when the system theme (light/dark) or accent changes.
         _sm = Adw.StyleManager.get_default()
         self._theme_handler = _sm.connect("notify::dark", self._on_theme_changed)
         self._accent_handler = _sm.connect("notify::accent-color", self._on_theme_changed)
 
         self._deck_manager.start()
+        self._virtual.restore_all()  # recreate saved virtual decks + windows
         if self._config.settings.run_in_background:
             self._enable_background()
             # If the window will be visible, warn (once) about a missing tray
@@ -139,6 +149,7 @@ class VerandaWindow(Adw.ApplicationWindow):
         for name, handler in (
             ("preferences", self._open_settings),
             ("rename_device", self.rename_device),
+            ("add-virtual-device", self._add_virtual_device),
             ("import", lambda: self.import_profile_dialog()),
             ("export", lambda: self.export_profile_dialog()),
             ("about", self._show_about),
@@ -172,6 +183,7 @@ class VerandaWindow(Adw.ApplicationWindow):
     def _build_menu(self) -> Gio.Menu:
         menu = Gio.Menu()
         menu.append("Rename Device…", "win.rename_device")
+        menu.append("Add Virtual Device…", "win.add-virtual-device")
         menu.append("Preferences", "win.preferences")
         backup = Gio.Menu()
         backup.append("Import Buttons…", "win.import")
@@ -183,6 +195,70 @@ class VerandaWindow(Adw.ApplicationWindow):
         about.append("Quit", "win.quit")
         menu.append_section(None, about)
         return menu
+
+    # -- virtual devices --------------------------------------------------
+
+    def _add_virtual_device(self) -> None:
+        self._virtual_form(
+            "New Virtual Device", "Virtual Deck", 2, 3,
+            lambda name, rows, cols: self._virtual.add(rows, cols, name),
+        )
+
+    def _virtual_settings(self, serial: str) -> None:
+        state = self._config.decks.get(serial)
+        if state is None:
+            return
+
+        def apply(name: str, rows: int, cols: int) -> None:
+            if name != state.name:
+                state.name = name
+                self._config.save()
+            self._virtual.resize(serial, rows, cols)  # no-op if unchanged
+            self._refresh()
+
+        self._virtual_form(
+            f"{state.display_name} — Settings", state.name or "Virtual Deck",
+            state.grid_rows or 2, state.grid_cols or 3, apply,
+        )
+
+    def _virtual_form(self, title, name, rows, cols, on_apply) -> None:
+        dialog = Adw.Dialog()
+        dialog.set_title(title)
+        dialog.set_content_width(360)
+        toolbar = Adw.ToolbarView()
+        header = Adw.HeaderBar()
+        apply_btn = Gtk.Button(label="Apply")
+        apply_btn.add_css_class("suggested-action")
+        header.pack_end(apply_btn)
+        toolbar.add_top_bar(header)
+
+        page = Adw.PreferencesPage()
+        group = Adw.PreferencesGroup()
+        name_row = Adw.EntryRow(title="Name")
+        name_row.set_text(name)
+        rows_row = Adw.SpinRow(
+            title="Rows",
+            adjustment=Gtk.Adjustment(lower=1, upper=8, step_increment=1, value=rows),
+        )
+        cols_row = Adw.SpinRow(
+            title="Columns",
+            adjustment=Gtk.Adjustment(lower=1, upper=8, step_increment=1, value=cols),
+        )
+        for row in (name_row, rows_row, cols_row):
+            group.add(row)
+        page.add(group)
+        toolbar.set_content(page)
+        dialog.set_child(toolbar)
+
+        def do_apply(_b):
+            on_apply(
+                name_row.get_text().strip() or "Virtual Deck",
+                int(rows_row.get_value()), int(cols_row.get_value()),
+            )
+            dialog.close()
+
+        apply_btn.connect("clicked", do_apply)
+        dialog.present(self)
 
     def _show_shortcuts(self) -> None:
         dialog = Adw.ShortcutsDialog()
@@ -349,6 +425,7 @@ class VerandaWindow(Adw.ApplicationWindow):
         self._apply_brightness(serial)
         self._deck_manager.apply_page(serial, page)
         self._live.rebuild(page)
+        self._virtual.sync_live(serial)  # keep non-current virtual windows live
         self._dbus.notify_changed()
         self._update_min_width()
         return False
@@ -1293,6 +1370,7 @@ class VerandaWindow(Adw.ApplicationWindow):
             _sm.disconnect(self._accent_handler)
             self._accent_handler = 0
         self._live.stop()
+        self._virtual.shutdown()
         self._screensaver.stop()
         self._tray.stop()
         self._dbus.unregister()

@@ -19,6 +19,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 from gi.repository import Gdk, Gtk  # noqa: E402
 
+from veranda.livebuttons import LiveButtonController  # noqa: E402
 from veranda.models import ButtonConfig  # noqa: E402
 from veranda.render import render_preview_texture  # noqa: E402
 
@@ -222,3 +223,151 @@ class VirtualDeckWindow(Gtk.ApplicationWindow):
     def _set_top(self, active: bool) -> None:
         self._on_top = active
         self._on_toggle_top(active)
+
+
+class VirtualDeckManager:
+    """Owns all virtual decks (objects, windows, per-deck live controllers).
+
+    Lives in the main window. Each virtual deck runs its own
+    :class:`LiveButtonController` so its floating window's special buttons stay
+    live even when it isn't the device selected in the editor — except the
+    currently-selected one, which the window's own controller already drives
+    (avoiding two controllers fighting over the same action callbacks).
+    """
+
+    def __init__(self, app, deck_manager, config, *,
+                 refresh: Callable[[], None],
+                 open_settings: Callable[[str], None],
+                 windows_changed: Callable[[], None]) -> None:
+        self._app = app
+        self._dm = deck_manager
+        self._config = config
+        self._refresh = refresh
+        self._open_settings = open_settings
+        self._windows_changed = windows_changed
+        self._decks: dict[str, VirtualDeck] = {}
+        self._live: dict[str, LiveButtonController] = {}
+
+    # -- lifecycle --------------------------------------------------------
+
+    def restore_all(self) -> None:
+        for serial, state in list(self._config.decks.items()):
+            if state.virtual and serial not in self._decks:
+                self._build(serial, state)
+
+    def add(self, rows: int, cols: int, name: str = "Virtual Deck") -> str:
+        serial = self._next_serial()
+        state = self._config.deck(serial)
+        state.virtual = True
+        state.grid_rows, state.grid_cols = rows, cols
+        state.name = name
+        state.deck_type = f"Virtual {rows}×{cols}"
+        self._config.save()
+        self._build(serial, state)
+        return serial
+
+    def remove(self, serial: str) -> None:
+        ctrl = self._live.pop(serial, None)
+        if ctrl is not None:
+            ctrl.stop()
+        self._dm.remove_virtual_deck(serial)  # closes the window via deck.close()
+        self._decks.pop(serial, None)
+        self._config.decks.pop(serial, None)
+        self._config.save()
+        self._windows_changed()
+        self._refresh()
+
+    def resize(self, serial: str, rows: int, cols: int) -> None:
+        state = self._config.decks.get(serial)
+        if state is None or (state.grid_rows, state.grid_cols) == (rows, cols):
+            return
+        state.grid_rows, state.grid_cols = rows, cols
+        state.deck_type = f"Virtual {rows}×{cols}"
+        ctrl = self._live.pop(serial, None)
+        if ctrl is not None:
+            ctrl.stop()
+        self._dm.remove_virtual_deck(serial)
+        self._decks.pop(serial, None)
+        self._config.save()
+        self._build(serial, state)
+        self._refresh()
+
+    def _build(self, serial: str, state) -> None:
+        deck = VirtualDeck(serial, state.grid_rows, state.grid_cols, name=state.display_name)
+        win = VirtualDeckWindow(
+            self._app, deck, state.display_name,
+            on_settings=lambda s=serial: self._open_settings(s),
+            on_close=lambda s=serial: self.remove(s),
+            on_toggle_top=lambda active, s=serial: self._set_on_top(s, active),
+            on_top=bool(state.window.get("on_top", False)),
+        )
+        deck.window = win
+        self._decks[serial] = deck
+        self._dm.add_virtual_deck(deck)
+        win.present()
+        self._live[serial] = LiveButtonController(self._repaint_cb(serial))
+        self._windows_changed()
+
+    def _next_serial(self) -> str:
+        n = 1
+        while f"virtual-{n}" in self._config.decks:
+            n += 1
+        return f"virtual-{n}"
+
+    # -- live buttons -----------------------------------------------------
+
+    def sync_live(self, current_serial: str | None) -> None:
+        """Drive each non-current virtual deck's live buttons; pause the current
+        one (the window's own controller handles it)."""
+        for serial, ctrl in self._live.items():
+            state = self._config.decks.get(serial)
+            if serial == current_serial or state is None:
+                ctrl.stop()
+            else:
+                ctrl.rebuild(state.current_page())
+
+    def _repaint_cb(self, serial: str) -> Callable[[int], None]:
+        def repaint(key: int) -> None:
+            state = self._config.decks.get(serial)
+            if state is not None:
+                self._dm.update_button(serial, key, state.current_page().buttons.get(key))
+        return repaint
+
+    # -- always-on-top / geometry ----------------------------------------
+
+    def _set_on_top(self, serial: str, active: bool) -> None:
+        state = self._config.decks.get(serial)
+        if state is not None:
+            state.window["on_top"] = active
+            self._config.save()
+        self._windows_changed()
+
+    def window_geometry(self) -> list[tuple[str, int, int, bool]]:
+        """For the Shell extension: (title, x, y, on_top) per virtual window."""
+        out = []
+        for serial, deck in self._decks.items():
+            state = self._config.decks.get(serial)
+            if state is None or deck.window is None:
+                continue
+            w = state.window
+            out.append((
+                deck.window.get_title(),
+                int(w.get("x", 80)), int(w.get("y", 80)),
+                bool(w.get("on_top", False)),
+            ))
+        return out
+
+    def report_moved(self, title: str, x: int, y: int) -> None:
+        for serial, deck in self._decks.items():
+            if deck.window is not None and deck.window.get_title() == title:
+                self._config.decks[serial].window.update({"x": x, "y": y})
+                self._config.save()
+                return
+
+    def shutdown(self) -> None:
+        for ctrl in self._live.values():
+            ctrl.stop()
+        for deck in self._decks.values():
+            deck.close()
+        self._live.clear()
+        self._decks.clear()
