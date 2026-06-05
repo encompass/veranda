@@ -17,6 +17,23 @@ an action onto a button to bind it. Press the physical key to run the action.
 
 ![The Veranda editor: device keys on the left, action library on the right](data/screenshots/editor.png)
 
+*The two-pane editor — drag an action from the library onto a key.*
+
+<table>
+  <tr>
+    <td width="50%"><img src="data/screenshots/deck-keys.png" alt="Live Special Buttons"><br><sub>Live Special Buttons: now playing, battery, do-not-disturb…</sub></td>
+    <td width="50%"><img src="data/screenshots/tile-editor.png" alt="Tile editor"><br><sub>Configure any key: icon, label, per-tile color, action.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="data/screenshots/app-picker.png" alt="App picker"><br><sub>Bind a key to launch any installed app.</sub></td>
+    <td width="50%"><img src="data/screenshots/settings-automation.png" alt="Profile auto-switch"><br><sub>Auto-switch profiles when an app takes focus.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="data/screenshots/settings-backup.png" alt="Backup and restore"><br><sub>Back up or restore everything to a single file.</sub></td>
+    <td width="50%"><img src="data/screenshots/media.png" alt="A second page of keys"><br><sub>Pages and profiles keep layouts organized.</sub></td>
+  </tr>
+</table>
+
 ## Features
 
 - Native GTK4 + libadwaita two-pane editor with drag-and-drop binding.

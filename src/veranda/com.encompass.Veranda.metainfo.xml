@@ -53,6 +53,26 @@
       <caption>The two-pane editor — device keys on the left, action library on the right</caption>
       <image>https://raw.githubusercontent.com/encompass/veranda/main/data/screenshots/editor.png</image>
     </screenshot>
+    <screenshot>
+      <caption>Live Special Buttons: now playing, battery, do-not-disturb, and more</caption>
+      <image>https://raw.githubusercontent.com/encompass/veranda/main/data/screenshots/deck-keys.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Configure any key: icon, label, per-tile color, and action</caption>
+      <image>https://raw.githubusercontent.com/encompass/veranda/main/data/screenshots/tile-editor.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Bind a key to launch any installed application</caption>
+      <image>https://raw.githubusercontent.com/encompass/veranda/main/data/screenshots/app-picker.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Auto-switch profiles when an app takes focus</caption>
+      <image>https://raw.githubusercontent.com/encompass/veranda/main/data/screenshots/settings-automation.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Back up or restore everything to a single file</caption>
+      <image>https://raw.githubusercontent.com/encompass/veranda/main/data/screenshots/settings-backup.png</image>
+    </screenshot>
   </screenshots>
 
   <provides>

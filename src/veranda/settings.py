@@ -53,11 +53,19 @@ class SettingsDialog(Adw.PreferencesDialog):
         self._building = False
 
         self._map_rows: list = []
-        self.add(self._build_general_page())
-        self.add(self._build_profiles_page())
-        self.add(self._build_automation_page())
-        self.add(self._build_device_page())
-        self.add(self._build_backup_page())
+        for name, page in (
+            ("general", self._build_general_page()),
+            ("profiles", self._build_profiles_page()),
+            ("automation", self._build_automation_page()),
+            ("device", self._build_device_page()),
+            ("backup", self._build_backup_page()),
+        ):
+            page.set_name(name)
+            self.add(page)
+
+    def show_pane(self, name: str) -> None:
+        """Jump straight to a named preferences pane (e.g. ``"backup"``)."""
+        self.set_visible_page_name(name)
 
     # -- automation (focus-driven profile switching) ----------------------
 
