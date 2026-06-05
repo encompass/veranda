@@ -14,6 +14,8 @@ from gi.repository import Adw, Gio, Gtk  # noqa: E402
 from veranda.iconpicker import IconPicker  # noqa: E402
 from veranda.models import ButtonConfig  # noqa: E402
 
+PREVIEW_PX = 132  # size of the live preview tile at the top of the editor
+
 
 class ButtonEditor(Adw.Dialog):
     """Edits a :class:`ButtonConfig` in place, notifying on every change."""
@@ -37,6 +39,19 @@ class ButtonEditor(Adw.Dialog):
         toolbar.add_top_bar(Adw.HeaderBar())
         page = Adw.PreferencesPage()
         toolbar.set_content(page)
+
+        # -- live preview -------------------------------------------------
+        preview_group = Adw.PreferencesGroup()
+        self._preview = Gtk.Picture(
+            content_fit=Gtk.ContentFit.CONTAIN,
+            halign=Gtk.Align.CENTER,
+            valign=Gtk.Align.CENTER,
+            margin_top=6,
+            margin_bottom=6,
+        )
+        self._preview.set_size_request(PREVIEW_PX, PREVIEW_PX)
+        preview_group.add(self._preview)
+        page.add(preview_group)
 
         # -- appearance ---------------------------------------------------
         appearance = Adw.PreferencesGroup(title="Appearance")
@@ -148,6 +163,7 @@ class ButtonEditor(Adw.Dialog):
 
         self.set_child(toolbar)
         self._update_icon_preview()
+        self._update_preview()
 
     # -- icon -------------------------------------------------------------
 
@@ -200,7 +216,18 @@ class ButtonEditor(Adw.Dialog):
     # -- handlers ---------------------------------------------------------
 
     def _notify(self) -> None:
+        self._update_preview()
         self._on_change()
+
+    def _update_preview(self) -> None:
+        from veranda import render
+
+        try:
+            self._preview.set_paintable(
+                render.render_preview_texture(self._button, size=PREVIEW_PX)
+            )
+        except Exception:  # noqa: BLE001 - keep the editor usable if render fails
+            pass
 
     def _build_refresh_group(self, action) -> Adw.PreferencesGroup:
         group = Adw.PreferencesGroup(title="Refresh")
