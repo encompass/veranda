@@ -75,6 +75,7 @@ class WeatherWidget(LiveWidget):
     REFRESH_INTERVAL = 1800
     MIN_INTERVAL = 300
     EDIT_LABEL = False  # the temperature is drawn by the widget
+    EDIT_ICON = False   # the icon always reflects the current conditions
 
     def default_label(self) -> str:
         return ""
