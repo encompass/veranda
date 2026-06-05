@@ -26,9 +26,13 @@ def main() -> None:
     print(f"Listening on {deck.deck_type()} ({deck.get_serial_number()}), "
           f"{deck.key_count()} keys. Press keys now…", flush=True)
 
+    states = [False] * deck.key_count()
+
     def on_key(_deck, key, state):
-        print(f"  key={key}  state={'DOWN' if state else 'up'}  t={time.monotonic():.3f}",
-              flush=True)
+        states[key] = bool(state)
+        snap = "".join("#" if s else "." for s in states)
+        print(f"  key={key} {'DOWN' if state else 'up  '}  all=[{snap}]  "
+              f"t={time.monotonic():.3f}", flush=True)
 
     deck.set_key_callback(on_key)
     try:
