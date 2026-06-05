@@ -5,5 +5,17 @@ __pycache__/
 build/
 dist/
 
+# Packaging build outputs
+/repo-flatpak/
+/build-flatpak/
+/.flatpak-builder/
+debian/veranda/
+debian/.debhelper/
+debian/*.debhelper
+debian/*.debhelper.log
+debian/*.substvars
+debian/files
+*.deb
+
 # Local Claude Code settings (machine-specific)
 .claude/settings.local.json

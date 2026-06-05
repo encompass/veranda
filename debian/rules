@@ -1,5 +1,6 @@
 #!/usr/bin/make -f
 export PYBUILD_NAME = veranda
+export PYBUILD_DISABLE = test
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 %:
