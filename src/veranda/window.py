@@ -509,9 +509,6 @@ class VerandaWindow(Adw.ApplicationWindow):
             return
         button = self._config.deck(self._current_serial).current_page().buttons.get(key)
         if button is None:
-            # Empty tile: make sure the action library is open so there is
-            # something to drag from, then hint how to use it.
-            self._split.set_show_sidebar(True)
             self.notify("Drag an action from the right onto this button")
             return
         self._open_editor(key, button)
