@@ -19,6 +19,7 @@ from veranda.dispatch import Dispatcher
 from veranda.editor import ButtonEditor
 from veranda.grid import DeckGrid
 from veranda.input_backend import shared_backend
+from veranda.devicespanel import DevicesPanel
 from veranda.library import ActionLibrary
 from veranda.pagespanel import PagesPanel
 from veranda.virtualdeck import VirtualDeckManager
@@ -80,11 +81,8 @@ class VerandaWindow(Adw.ApplicationWindow):
             notify=self.notify,
         )
         self._current_serial: str | None = None
-        self._device_serials: list[str] = []
-        self._device_names: list[str] = []
         self._profile_names: list[str] = []
         self._updating_profiles = False
-        self._updating_devices = False
         self._named_prompted: set[str] = set()
 
         self._screensaver = ScreensaverMonitor(self._on_screensaver_changed)
@@ -186,9 +184,6 @@ class VerandaWindow(Adw.ApplicationWindow):
 
     def _build_menu(self) -> Gio.Menu:
         menu = Gio.Menu()
-        menu.append("Rename Device…", "win.rename_device")
-        menu.append("Add Virtual Device…", "win.add-virtual-device")
-        menu.append("Virtual Device Settings…", "win.virtual-settings")
         menu.append("Preferences", "win.preferences")
         backup = Gio.Menu()
         backup.append("Import Buttons…", "win.import")
@@ -377,12 +372,7 @@ class VerandaWindow(Adw.ApplicationWindow):
     def _build_header(self) -> Adw.HeaderBar:
         header = Adw.HeaderBar()
 
-        # Device switcher (shows each deck's friendly name).
-        self._device_drop = Gtk.DropDown.new_from_strings(["Device"])
-        self._device_drop.set_tooltip_text("Selected device")
-        self._device_drop.connect("notify::selected", self._on_device_selected)
-        header.pack_start(self._device_drop)
-
+        # Devices now live in the left "Devices" sidebar section, not here.
         # Profile switcher.
         self._profile_drop = Gtk.DropDown.new_from_strings(["Default"])
         self._profile_drop.set_tooltip_text("Active profile")
@@ -398,6 +388,18 @@ class VerandaWindow(Adw.ApplicationWindow):
     def _build_main_pane(self) -> Gtk.Widget:
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
 
+        # Left sidebar: collapsible Devices section above the Pages section.
+        sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, width_request=190)
+        sidebar.add_css_class("left-sidebar")
+        self._devices_panel = DevicesPanel(
+            on_select=self._select_device,
+            on_add=self._add_virtual_device,
+            on_rename=self._rename_device_at,
+            on_settings=lambda s: self._virtual_settings(s),
+            on_remove=lambda s: self._virtual.remove(s),
+        )
+        sidebar.append(self._devices_panel)
+        sidebar.append(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
         self._pages_panel = PagesPanel(
             on_select=self._on_page_selected,
             on_reorder=self._reorder_pages,
@@ -405,7 +407,8 @@ class VerandaWindow(Adw.ApplicationWindow):
             on_rename=self._rename_page_at,
             on_remove=self._remove_page_at,
         )
-        box.append(self._pages_panel)
+        sidebar.append(self._pages_panel)
+        box.append(sidebar)
         box.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
 
         self._body = Gtk.Stack(hexpand=True, vexpand=True)
@@ -473,7 +476,11 @@ class VerandaWindow(Adw.ApplicationWindow):
         page = profile.current_page()
 
         self._set_controls_sensitive(True)
-        self._update_device_dropdown(serial)
+        devices = [
+            (s, self._config.deck(s).display_name, self._config.deck(s).virtual)
+            for s in self._deck_manager.serials()
+        ]
+        self._devices_panel.update(devices, serial)
         self._update_profile_dropdown(state)
 
         self._pages_panel.update([p.name for p in profile.pages], profile.active_page)
@@ -523,30 +530,22 @@ class VerandaWindow(Adw.ApplicationWindow):
             self._deck_manager.update_button(serial, key, button)
 
     def _set_controls_sensitive(self, sensitive: bool) -> None:
-        for widget in (self._device_drop, self._profile_drop, self._pages_panel):
+        for widget in (self._devices_panel, self._profile_drop, self._pages_panel):
             widget.set_sensitive(sensitive)
 
-    def _update_device_dropdown(self, current_serial: str) -> None:
-        self._updating_devices = True
-        serials = self._deck_manager.serials()
-        names = [self._config.deck(s).display_name for s in serials]
-        # Only swap the model when the device list actually changes. Replacing it
-        # from inside the dropdown's own selection handler (device switch →
-        # notify::selected → _refresh) frees the model GTK is mid-notify on and
-        # segfaults; a plain set_selected is reentrancy-safe.
-        if names != self._device_names:
-            model = Gtk.StringList()
-            for name in names:
-                model.append(name)
-            self._device_drop.set_model(model)
-            self._device_names = names
-        self._device_serials = serials
-        if current_serial in serials:
-            self._device_drop.set_selected(serials.index(current_serial))
-        self._device_drop.set_visible(len(serials) > 0)
-        # A lone device needs no selection affordance.
-        self._device_drop.set_sensitive(len(serials) > 1)
-        self._updating_devices = False
+    def _select_device(self, serial: str) -> None:
+        if serial == self._current_serial:
+            return
+        self._current_serial = serial
+        # Picking a virtual deck reveals its (possibly hidden) window.
+        state = self._config.decks.get(serial)
+        if state is not None and state.virtual and not state.window.get("visible", True):
+            self._virtual.set_visible(serial, True)
+        self._refresh()
+
+    def _rename_device_at(self, serial: str) -> None:
+        if serial in self._config.decks or serial in self._deck_manager.serials():
+            self._prompt_device_name(serial)
 
     def _update_profile_dropdown(self, state: DeckState) -> None:
         self._updating_profiles = True
@@ -970,19 +969,6 @@ class VerandaWindow(Adw.ApplicationWindow):
 
     # -- devices ----------------------------------------------------------
 
-    def _on_device_selected(self, drop, _pspec) -> None:
-        if self._updating_devices:
-            return
-        idx = drop.get_selected()
-        if 0 <= idx < len(self._device_serials):
-            serial = self._device_serials[idx]
-            if serial != self._current_serial:
-                self._current_serial = serial
-                # Picking a virtual deck reveals its (possibly hidden) window.
-                state = self._config.decks.get(serial)
-                if state is not None and state.virtual and not state.window.get("visible", True):
-                    self._virtual.set_visible(serial, True)
-                self._refresh()
 
     def _unique_default_name(self, base: str, exclude: str) -> str:
         base = base or "Stream Deck"

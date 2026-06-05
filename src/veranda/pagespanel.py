@@ -11,10 +11,11 @@ gi.require_version("Adw", "1")
 from gi.repository import Gdk, GObject, Gtk  # noqa: E402
 
 from veranda.models import PageMove  # noqa: E402
+from veranda.sidebar import CollapsibleSection  # noqa: E402
 
 
 class PagesPanel(Gtk.Box):
-    """Vertical list of pages. Click to switch, drag to reorder, menu to
+    """Collapsible list of pages. Click to switch, drag to reorder, menu to
     rename/remove. The window supplies the callbacks and calls :meth:`update`.
     """
 
@@ -26,7 +27,7 @@ class PagesPanel(Gtk.Box):
         on_rename: Callable[[int], None],
         on_remove: Callable[[int], None],
     ) -> None:
-        super().__init__(orientation=Gtk.Orientation.VERTICAL, width_request=170)
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, width_request=190, vexpand=True)
         self.add_css_class("pages-panel")
         self._on_select = on_select
         self._on_reorder = on_reorder
@@ -35,26 +36,18 @@ class PagesPanel(Gtk.Box):
         self._on_remove = on_remove
         self._selecting = False
 
-        header = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL,
-            margin_top=10, margin_bottom=4, margin_start=12, margin_end=8,
+        section = CollapsibleSection(
+            "Pages", on_add=lambda: self._on_add(), add_tooltip="Add a page",
+            vexpand=True,
         )
-        title = Gtk.Label(label="Pages", xalign=0.0, hexpand=True)
-        title.add_css_class("heading")
-        header.append(title)
-        add = Gtk.Button(icon_name="list-add-symbolic", tooltip_text="Add a page")
-        add.add_css_class("flat")
-        add.connect("clicked", lambda _b: self._on_add())
-        header.append(add)
-        self.append(header)
-
         self._list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE)
         self._list.add_css_class("navigation-sidebar")
         self._list.connect("row-activated", self._on_row_activated)
         scroller = Gtk.ScrolledWindow(hexpand=False, vexpand=True)
         scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         scroller.set_child(self._list)
-        self.append(scroller)
+        section.set_content(scroller)
+        self.append(section)
 
     # -- population -------------------------------------------------------
 
