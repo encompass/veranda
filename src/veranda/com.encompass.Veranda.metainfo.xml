@@ -87,6 +87,12 @@
   <update_contact>encompass@gmail.com</update_contact>
 
   <releases>
+    <release version="0.2.0" date="2026-06-05">
+      <description>
+        <p>App Control actions, a live tile preview, a drag-reorderable pages
+        sidebar, a working Weather tile, and a redesigned Date tile.</p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-06-04">
       <description>
         <p>Initial release.</p>

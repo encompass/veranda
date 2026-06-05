@@ -1,3 +1,14 @@
+veranda (0.2.0-1) unstable; urgency=medium
+
+  * App Control actions: Media Control (MPRIS) and Open Settings Panel.
+  * Weather tile fetches the temperature + condition icon; pick location from
+    GNOME Weather.
+  * Redesigned Date tile (calendar icon with the day number overlaid).
+  * Editor gains a live tile preview; pages move to a drag-reorderable left
+    sidebar; full-width header; collapsible action-library sections.
+
+ -- Jason "JBear" Brower <encompass@gmail.com>  Fri, 05 Jun 2026 12:00:00 +0000
+
 veranda (0.1.0-1) unstable; urgency=medium
 
   * Initial release.
