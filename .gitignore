@@ -9,6 +9,8 @@ dist/
 /repo-flatpak/
 /build-flatpak/
 /.flatpak-builder/
+/.pybuild/
+debian/debhelper-build-stamp
 debian/veranda/
 debian/.debhelper/
 debian/*.debhelper
