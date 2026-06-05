@@ -19,3 +19,6 @@ debian/files
 
 # Local Claude Code settings (machine-specific)
 .claude/settings.local.json
+
+# Flatpak bundle artifacts
+*.flatpak
