@@ -200,8 +200,8 @@ class VerandaWindow(Adw.ApplicationWindow):
 
     def _add_virtual_device(self) -> None:
         self._virtual_form(
-            "New Virtual Device", "Virtual Deck", 2, 3,
-            lambda name, rows, cols: self._virtual.add(rows, cols, name),
+            "New Virtual Device", "Virtual Deck", 2, 3, "",
+            lambda name, rows, cols, bg: self._virtual.add(rows, cols, name, bg),
         )
 
     def _virtual_settings(self, serial: str) -> None:
@@ -209,22 +209,28 @@ class VerandaWindow(Adw.ApplicationWindow):
         if state is None:
             return
 
-        def apply(name: str, rows: int, cols: int) -> None:
+        def apply(name: str, rows: int, cols: int, bg: str) -> None:
             if name != state.name:
                 state.name = name
                 self._config.save()
+            self._virtual.set_background(serial, bg)
             self._virtual.resize(serial, rows, cols)  # no-op if unchanged
             self._refresh()
 
         self._virtual_form(
             f"{state.display_name} — Settings", state.name or "Virtual Deck",
-            state.grid_rows or 2, state.grid_cols or 3, apply,
+            state.grid_rows or 2, state.grid_cols or 3,
+            str(state.window.get("bg", "")), apply,
         )
 
-    def _virtual_form(self, title, name, rows, cols, on_apply) -> None:
+    def _virtual_form(self, title, name, rows, cols, bg, on_apply) -> None:
+        from gi.repository import Gdk
+
+        from veranda import render
+
         dialog = Adw.Dialog()
         dialog.set_title(title)
-        dialog.set_content_width(360)
+        dialog.set_content_width(380)
         toolbar = Adw.ToolbarView()
         header = Adw.HeaderBar()
         apply_btn = Gtk.Button(label="Apply")
@@ -244,7 +250,29 @@ class VerandaWindow(Adw.ApplicationWindow):
             title="Columns",
             adjustment=Gtk.Adjustment(lower=1, upper=8, step_increment=1, value=cols),
         )
-        for row in (name_row, rows_row, cols_row):
+
+        bg_row = Adw.ActionRow(title="Background", subtitle="Window colour")
+        chosen = {"bg": bg}
+        color_btn = Gtk.ColorDialogButton(dialog=Gtk.ColorDialog(), valign=Gtk.Align.CENTER)
+        rgb = render.resolve_background(bg)
+        rgba = Gdk.RGBA()
+        rgba.red, rgba.green, rgba.blue, rgba.alpha = rgb[0] / 255, rgb[1] / 255, rgb[2] / 255, 1.0
+        color_btn.set_rgba(rgba)  # before connecting, so it doesn't count as a choice
+        color_btn.connect("notify::rgba", lambda *_a: chosen.update(
+            bg="#%02x%02x%02x" % (
+                round(color_btn.get_rgba().red * 255),
+                round(color_btn.get_rgba().green * 255),
+                round(color_btn.get_rgba().blue * 255),
+            )
+        ))
+        reset = Gtk.Button(icon_name="edit-clear-symbolic", valign=Gtk.Align.CENTER,
+                           tooltip_text="Use the theme default")
+        reset.add_css_class("flat")
+        reset.connect("clicked", lambda _b: chosen.update(bg=""))
+        bg_row.add_suffix(color_btn)
+        bg_row.add_suffix(reset)
+
+        for row in (name_row, rows_row, cols_row, bg_row):
             group.add(row)
         page.add(group)
         toolbar.set_content(page)
@@ -253,7 +281,7 @@ class VerandaWindow(Adw.ApplicationWindow):
         def do_apply(_b):
             on_apply(
                 name_row.get_text().strip() or "Virtual Deck",
-                int(rows_row.get_value()), int(cols_row.get_value()),
+                int(rows_row.get_value()), int(cols_row.get_value()), chosen["bg"],
             )
             dialog.close()
 

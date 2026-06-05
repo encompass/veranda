@@ -112,6 +112,29 @@ def test_manager_geometry_and_report_moved():
     assert cfg.decks["virtual-1"].window["on_top"] is True  # preserved
 
 
+def test_manager_set_background_persists_and_applies():
+    from veranda.config import AppConfig
+    from veranda.virtualdeck import VirtualDeckManager
+
+    cfg = AppConfig(decks={"virtual-1": DeckState(
+        serial="virtual-1", virtual=True, grid_rows=1, grid_cols=1, window={})})
+    mgr = VirtualDeckManager(None, None, cfg, refresh=lambda: None,
+                             open_settings=lambda s: None, windows_changed=lambda: None)
+    applied = []
+
+    class FakeWin:
+        def set_background(self, c):
+            applied.append(c)
+
+    class FakeDeck:
+        window = FakeWin()
+
+    mgr._decks["virtual-1"] = FakeDeck()
+    mgr.set_background("virtual-1", "#abcdef")
+    assert cfg.decks["virtual-1"].window["bg"] == "#abcdef"
+    assert applied == ["#abcdef"]
+
+
 def test_press_dispatches_through_manager():
     presses = []
     dm = DeckManager(on_key_press=lambda s, k: presses.append((s, k)),

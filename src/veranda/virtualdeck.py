@@ -131,6 +131,7 @@ class VirtualDeckWindow(Gtk.ApplicationWindow):
         on_close: Callable[[], None],
         on_toggle_top: Callable[[bool], None],
         on_top: bool = False,
+        bg: str = "",
     ) -> None:
         super().__init__(application=app)
         self._deck = deck
@@ -158,10 +159,17 @@ class VirtualDeckWindow(Gtk.ApplicationWindow):
                 self._tiles[key] = tile
                 key += 1
 
-        # Gtk.WindowHandle makes the whole surface draggable to move the window.
+        # Gtk.WindowHandle makes the whole surface draggable to move the window;
+        # it is also the rounded, coloured surface behind the keys.
         handle = Gtk.WindowHandle()
+        handle.add_css_class("virtual-deck-surface")
         handle.set_child(grid)
         self.set_child(handle)
+        self._bg_provider = Gtk.CssProvider()
+        handle.get_style_context().add_provider(
+            self._bg_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1
+        )
+        self.set_background(bg)
 
         # Right-click anywhere → options menu.
         gesture = Gtk.GestureClick(button=3)
@@ -183,6 +191,12 @@ class VirtualDeckWindow(Gtk.ApplicationWindow):
 
     def set_brightness(self, value: int) -> None:
         self.set_opacity(max(0.35, min(1.0, value / 100)))
+
+    def set_background(self, color: str) -> None:
+        """Override the surface colour (``""`` → the stylesheet default)."""
+        css = f".virtual-deck-surface {{ background-color: {color}; }}" if color else \
+            ".virtual-deck-surface {}"
+        self._bg_provider.load_from_data(css.encode())
 
     # -- chrome / menu ----------------------------------------------------
 
@@ -255,16 +269,27 @@ class VirtualDeckManager:
             if state.virtual and serial not in self._decks:
                 self._build(serial, state)
 
-    def add(self, rows: int, cols: int, name: str = "Virtual Deck") -> str:
+    def add(self, rows: int, cols: int, name: str = "Virtual Deck", bg: str = "") -> str:
         serial = self._next_serial()
         state = self._config.deck(serial)
         state.virtual = True
         state.grid_rows, state.grid_cols = rows, cols
         state.name = name
         state.deck_type = f"Virtual {rows}×{cols}"
+        state.window["bg"] = bg
         self._config.save()
         self._build(serial, state)
         return serial
+
+    def set_background(self, serial: str, bg: str) -> None:
+        state = self._config.decks.get(serial)
+        if state is None:
+            return
+        state.window["bg"] = bg
+        self._config.save()
+        deck = self._decks.get(serial)
+        if deck is not None and deck.window is not None:
+            deck.window.set_background(bg)
 
     def remove(self, serial: str) -> None:
         ctrl = self._live.pop(serial, None)
@@ -300,6 +325,7 @@ class VirtualDeckManager:
             on_close=lambda s=serial: self.remove(s),
             on_toggle_top=lambda active, s=serial: self._set_on_top(s, active),
             on_top=bool(state.window.get("on_top", False)),
+            bg=str(state.window.get("bg", "")),
         )
         deck.window = win
         self._decks[serial] = deck
