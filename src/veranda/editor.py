@@ -42,15 +42,14 @@ class ButtonEditor(Adw.Dialog):
 
         # -- live preview -------------------------------------------------
         preview_group = Adw.PreferencesGroup()
-        self._preview = Gtk.Picture(
-            content_fit=Gtk.ContentFit.CONTAIN,
-            halign=Gtk.Align.CENTER,
-            valign=Gtk.Align.CENTER,
-            margin_top=6,
-            margin_bottom=6,
-        )
+        self._preview = Gtk.Picture(content_fit=Gtk.ContentFit.CONTAIN)
         self._preview.set_size_request(PREVIEW_PX, PREVIEW_PX)
-        preview_group.add(self._preview)
+        # Center in a box that only takes the preview's width, so CONTAIN can't
+        # scale the tile up to the full group width.
+        wrap = Gtk.Box(halign=Gtk.Align.CENTER, hexpand=False,
+                       margin_top=6, margin_bottom=6)
+        wrap.append(self._preview)
+        preview_group.add(wrap)
         page.add(preview_group)
 
         # -- appearance ---------------------------------------------------

@@ -76,6 +76,10 @@ class SystemMonitorWidget(LiveWidget):
     DESCRIPTION = "CPU / memory / disk usage"
     ICON = "org.gnome.SystemMonitor-symbolic"
     REFRESH_INTERVAL = 3
+    EDIT_LABEL = False  # the widget draws the percentage
+
+    def default_label(self) -> str:
+        return ""
 
     def __init__(self, params: dict | None = None) -> None:
         super().__init__(params)
