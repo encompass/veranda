@@ -162,6 +162,17 @@ export default class VerandaExtension extends Extension {
         this._virtualSyncTimeout = 0;
         this._windowCreatedId = global.display.connect(
             'window-created', () => this._scheduleVirtualSync());
+        // Report the final position immediately when the user finishes dragging
+        // a tracked virtual deck (more reliable than the debounced move signal).
+        this._grabEndId = global.display.connect(
+            'grab-op-end', (_d, win, _op) => this._reportPosition(win));
+    }
+
+    _reportPosition(win) {
+        if (!win || !this._proxy || !this._tracked.has(win))
+            return;
+        const r = win.get_frame_rect();
+        this._proxy.ReportVirtualWindowMovedRemote(win.get_title(), r.x, r.y);
     }
 
     _scheduleVirtualSync() {
@@ -357,6 +368,9 @@ export default class VerandaExtension extends Extension {
         if (this._windowCreatedId)
             global.display.disconnect(this._windowCreatedId);
         this._windowCreatedId = 0;
+        if (this._grabEndId)
+            global.display.disconnect(this._grabEndId);
+        this._grabEndId = 0;
         if (this._virtualSyncTimeout) {
             GLib.source_remove(this._virtualSyncTimeout);
             this._virtualSyncTimeout = 0;

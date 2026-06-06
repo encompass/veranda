@@ -135,6 +135,18 @@ def test_manager_set_background_persists_and_applies():
     assert applied == ["#abcdef"]
 
 
+def test_window_position_persists_across_reload():
+    # isolate_config (autouse) points XDG at a tmp dir, so save/load round-trips.
+    from veranda.config import AppConfig
+
+    AppConfig(decks={"virtual-1": DeckState(
+        serial="virtual-1", virtual=True, grid_rows=1, grid_cols=1,
+        window={"x": 300, "y": 150, "on_top": True, "visible": True})}).save()
+    w = AppConfig.load().decks["virtual-1"].window
+    assert (w["x"], w["y"]) == (300, 150)
+    assert w["on_top"] is True
+
+
 def test_manager_set_visible_persists_and_applies():
     from veranda.config import AppConfig
     from veranda.virtualdeck import VirtualDeckManager
